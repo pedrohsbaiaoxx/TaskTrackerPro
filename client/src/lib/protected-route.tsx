@@ -40,6 +40,7 @@ export function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
+    console.log("Usuário não autenticado, redirecionando para /auth");
     return (
       <Route path={path}>
         <Redirect to="/auth" />

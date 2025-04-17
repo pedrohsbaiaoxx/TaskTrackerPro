@@ -53,7 +53,7 @@ export default function AuthPage() {
         description: "Você foi identificado com sucesso",
       });
       
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       toast({

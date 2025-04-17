@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +7,7 @@ import TripList from "@/pages/TripList";
 import ExpenseList from "@/pages/ExpenseList";
 import NotFound from "@/pages/not-found";
 import AuthPageCpf from "@/pages/auth-page-cpf";
+import RedirectToAuth from "@/pages/Redirect";
 import CpfModal from "@/components/CpfModal";
 import { useToast } from "@/hooks/use-toast";
 import { getCPF, saveCPF } from "@/lib/expenseStore";
@@ -98,7 +99,8 @@ function MobileAddButton() {
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={TripList} />
+      <Route path="/" component={RedirectToAuth} />
+      <ProtectedRoute path="/dashboard" component={TripList} />
       <ProtectedRoute path="/new-trip" component={TripList} />
       <ProtectedRoute path="/trip/:id" component={ExpenseList} />
       <ProtectedRoute path="/trip/:id/new-expense" component={ExpenseList} />
