@@ -10,7 +10,6 @@ import AuthPageCpf from "@/pages/auth-page-cpf";
 import CpfModal from "@/components/CpfModal";
 import { useToast } from "@/hooks/use-toast";
 import { getCPF, saveCPF } from "@/lib/expenseStore";
-import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Header() {
@@ -125,16 +124,14 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <div className="flex flex-col h-screen">
-          <AppHeader showHeader={!isAuthPage} />
-          <main className={`flex-1 overflow-auto ${isAuthPage ? 'p-0' : ''}`}>
-            <Router />
-          </main>
-          <AppMobileButton showButton={!isAuthPage} />
-        </div>
-        <Toaster />
-      </AuthProvider>
+      <div className="flex flex-col h-screen">
+        <AppHeader showHeader={!isAuthPage} />
+        <main className={`flex-1 overflow-auto ${isAuthPage ? 'p-0' : ''}`}>
+          <Router />
+        </main>
+        <AppMobileButton showButton={!isAuthPage} />
+      </div>
+      <Toaster />
     </QueryClientProvider>
   );
 }
