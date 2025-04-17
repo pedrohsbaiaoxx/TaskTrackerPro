@@ -1,0 +1,128 @@
+1. 📌 Visão Geral
+Desenvolvimento de um webapp responsivo, voltado para profissionais que desejam controlar e registrar gastos corporativos por viagem, com anexos de comprovantes e relatórios automáticos em Excel e PDF.
+
+2. 🎯 Objetivos do Projeto
+Eliminar planilhas manuais para controle de reembolsos.
+
+Centralizar o histórico de despesas por viagem.
+
+Facilitar o registro de comprovantes por imagem.
+
+Gerar relatórios de prestação de contas de forma automatizada.
+
+Acessível sem login obrigatório.
+
+3. 👤 Perfil do Usuário
+Usuário Individual (sem autenticação)
+Pode criar e consultar viagens.
+
+Registra despesas com notas fiscais anexadas.
+
+Exporta relatórios em PDF e Excel.
+
+Pode utilizar CPF (opcional) como chave para identificar viagens anteriores.
+
+4. 🧱 Funcionalidades Principais
+4.1 Cadastro de Viagens
+Criar, editar ou excluir viagens.
+
+Campos:
+
+Nome da Viagem: ex: “Viagem São Luís - Set/2024”
+
+Data de Início e Fim (opcional)
+
+4.2 Registro de Gastos por Viagem
+Cada gasto estará vinculado a uma viagem.
+
+
+Campo	Tipo	Obrigatório
+Data da despesa	Data	Sim
+Destino	Texto	Sim
+Justificativa da despesa	Texto	Sim
+Valor - Refeição	Numérico	Opcional
+Valor - Transporte	Numérico	Opcional
+Estacionamento/Pedágio	Numérico	Opcional
+KM rodado	Numérico	Opcional
+Valor por KM (calculado)	Automático (R$ 1,09 * KM)	—
+Outros gastos	Numérico	Opcional
+Especificar "Outros"	Texto	Opcional
+Anexo da NF	Imagem	Sim
+✅ Reembolso KM rodado
+Valor fixo por km: R$ 1,09
+
+Campo "Valor por KM" será calculado automaticamente e exibido ao lado da entrada de KM.
+
+Incluído no total da despesa e nos relatórios.
+
+4.3 Anexo de Nota Fiscal
+Permite escolher imagem da galeria ou câmera.
+
+Imagem é exibida em miniatura na listagem.
+
+Vinculada ao gasto correspondente.
+
+4.4 Exportação de Relatórios
+Dois formatos:
+
+📊 Excel (.xlsx)
+Cada linha representa um gasto.
+
+Inclui todos os campos.
+
+Valor total por viagem somado no final.
+
+📄 PDF
+Lista de gastos resumidos.
+
+Imagens das notas em ordem cronológica (uma por página ou agrupadas).
+
+Informações básicas de cabeçalho (nome da viagem, data, CPF se informado).
+
+5. 🧭 Fluxo de Navegação
+mermaid
+Copiar
+Editar
+graph TD
+A[Início: CPF (opcional)] 
+B --> [Lista de Viagens]
+B --> C[+ Nova Viagem]
+B --> D[Selecionar Viagem]
+D --> E[Lista de Gastos]
+E --> F[+ Novo Gasto]
+F --> G[Formulário de Despesa + Upload de Foto]
+E --> H[Exportar Excel ou PDF]
+6. ⚙️ Requisitos Técnicos
+
+Item	Descrição
+Plataforma	Web (responsivo para mobile e desktop)
+Front-end	React.js, Vue.js, ou HTML/CSS/JS puro
+Armazenamento	IndexedDB local (navegador) ou Firebase/Supabase (opcional)
+Suporte à câmera	Input file com accept="image/*"
+Geração de Excel	Via SheetJS
+Geração de PDF	Via jsPDF
+Imagens	Armazenadas localmente (base64) ou via backend
+Compatibilidade	Chrome, Safari, Firefox, Edge (mobile e desktop)
+7. 🔐 Segurança e Acesso
+Sem login obrigatório
+
+CPF opcional para organizar os dados do usuário.
+
+Dados armazenados:
+
+Localmente no navegador (por padrão)
+
+Em nuvem se backend for implementado (Firebase/Supabase)
+
+8. 📈 Requisitos Não Funcionais
+
+Requisito	Descrição
+Usabilidade	Design simples e fácil de usar com foco em usuários móveis
+Desempenho	Leve e rápido, mesmo com imagens anexadas
+Backup	Possibilidade de exportar relatórios para manter cópias
+Escalabilidade	Fácil adaptação para uso com múltiplos usuários futuramente
+✅ Resumo dos Cálculos Automatizados
+
+Campo	Fórmula	Exemplo
+Valor por KM	KM rodado * 1,09	120 * 1,09 = R$ 130,80
+Total da Despesa	Soma de todos os campos numéricos (incluindo KM calculado)	Ex: R$ 90 + R$ 130,80 + R$ 12
