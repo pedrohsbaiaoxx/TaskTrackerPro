@@ -6,9 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import TripList from "@/pages/TripList";
 import ExpenseList from "@/pages/ExpenseList";
 import NotFound from "@/pages/not-found";
+import AuthPage from "@/pages/auth-page";
 import CpfModal from "@/components/CpfModal";
 import { useToast } from "@/hooks/use-toast";
 import { getCPF, saveCPF } from "@/lib/expenseStore";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Header() {
   const [location, setLocation] = useState("/");
@@ -96,28 +99,42 @@ function MobileAddButton() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={TripList} />
-      <Route path="/new-trip" component={TripList} />
-      <Route path="/trip/:id" component={ExpenseList} />
-      <Route path="/trip/:id/new-expense" component={ExpenseList} />
-      <Route path="/trip/:id/edit-expense/:expenseId" component={ExpenseList} />
-      <Route path="/trip/:id/view-receipt/:expenseId" component={ExpenseList} />
+      <ProtectedRoute path="/" component={TripList} />
+      <ProtectedRoute path="/new-trip" component={TripList} />
+      <ProtectedRoute path="/trip/:id" component={ExpenseList} />
+      <ProtectedRoute path="/trip/:id/new-expense" component={ExpenseList} />
+      <ProtectedRoute path="/trip/:id/edit-expense/:expenseId" component={ExpenseList} />
+      <ProtectedRoute path="/trip/:id/view-receipt/:expenseId" component={ExpenseList} />
+      <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+function AppHeader({ showHeader }: { showHeader: boolean }) {
+  return showHeader ? <Header /> : null;
+}
+
+function AppMobileButton({ showButton }: { showButton: boolean }) {
+  return showButton ? <MobileAddButton /> : null;
+}
+
 function App() {
+  const [location] = useLocation();
+  const isAuthPage = location === "/auth";
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col h-screen">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <Router />
-        </main>
-        <MobileAddButton />
-      </div>
-      <Toaster />
+      <AuthProvider>
+        <div className="flex flex-col h-screen">
+          <AppHeader showHeader={!isAuthPage} />
+          <main className={`flex-1 overflow-auto ${isAuthPage ? 'p-0' : ''}`}>
+            <Router />
+          </main>
+          <AppMobileButton showButton={!isAuthPage} />
+        </div>
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
