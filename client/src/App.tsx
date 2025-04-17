@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import TripList from "@/pages/TripList";
 import ExpenseList from "@/pages/ExpenseList";
 import NotFound from "@/pages/not-found";
-import AuthPage from "@/pages/auth-page";
+import AuthPageCpf from "@/pages/auth-page-cpf";
 import CpfModal from "@/components/CpfModal";
 import { useToast } from "@/hooks/use-toast";
 import { getCPF, saveCPF } from "@/lib/expenseStore";
@@ -105,7 +105,7 @@ function Router() {
       <ProtectedRoute path="/trip/:id/new-expense" component={ExpenseList} />
       <ProtectedRoute path="/trip/:id/edit-expense/:expenseId" component={ExpenseList} />
       <ProtectedRoute path="/trip/:id/view-receipt/:expenseId" component={ExpenseList} />
-      <Route path="/auth" component={AuthPage} />
+      <Route path="/auth" component={AuthPageCpf} />
       <Route component={NotFound} />
     </Switch>
   );

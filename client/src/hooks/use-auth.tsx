@@ -1,107 +1,48 @@
-import { createContext, ReactNode, useContext } from "react";
-import {
-  useQuery,
-  useMutation,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { InsertUser, User as SelectUser } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { getCPF } from "@/lib/expenseStore";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
-  user: SelectUser | null;
+  user: { cpf: string } | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
 };
-
-type LoginData = Pick<InsertUser, "username" | "password">;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<SelectUser | undefined, Error>({
-    queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-  });
+  const [user, setUser] = useState<{ cpf: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
-    },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Login realizado com sucesso",
-        description: `Bem-vindo(a), ${user.username}!`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Falha no login",
-        description: error.message || "Usuário ou senha inválidos",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
-    },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Cadastro realizado com sucesso",
-        description: "Sua conta foi criada e você já está logado!",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Falha no cadastro",
-        description: error.message || "Não foi possível criar sua conta",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
-      toast({
-        title: "Logout realizado",
-        description: "Você saiu da sua conta com sucesso",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Falha ao sair",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        setIsLoading(true);
+        const cpf = await getCPF();
+        
+        if (cpf) {
+          setUser({ cpf });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Erro ao verificar autenticação'));
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user: user,
         isLoading,
-        error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
+        error
       }}
     >
       {children}
