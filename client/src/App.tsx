@@ -3,6 +3,7 @@ import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { Loader2 } from "lucide-react";
 import TripList from "@/pages/TripList";
 import ExpenseList from "@/pages/ExpenseList";
 import NotFound from "@/pages/not-found";
@@ -97,9 +98,40 @@ function MobileAddButton() {
 }
 
 function Router() {
+  const [cpf, setCpf] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const storedCpf = await getCPF();
+        setCpf(storedCpf);
+      } catch (error) {
+        console.error("Erro ao verificar CPF:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="h-8 w-8 animate-spin border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+  
+  // Se já estiver autenticado e estiver na página inicial, redirecionar para dashboard
+  if (cpf && window.location.pathname === "/") {
+    return <Redirect to="/dashboard" />;
+  }
+  
   return (
     <Switch>
-      <Route path="/" component={RedirectToAuth} />
+      <Route path="/" component={cpf ? TripList : RedirectToAuth} />
       <ProtectedRoute path="/dashboard" component={TripList} />
       <ProtectedRoute path="/new-trip" component={TripList} />
       <ProtectedRoute path="/trip/:id" component={ExpenseList} />
