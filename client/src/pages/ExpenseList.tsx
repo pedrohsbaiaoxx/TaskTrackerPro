@@ -33,6 +33,7 @@ import {
   getExpensesByTrip,
   deleteExpense,
   formatCurrency,
+  formatDateRange,
   calculateTripSummary,
   getExpense
 } from "@/lib/expenseStore";
