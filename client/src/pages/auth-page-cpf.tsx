@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogIn } from "lucide-react";
 import { saveCPF } from "@/lib/expenseStore";
+import { createUser, getUserByCpf } from "@/lib/firebase";
 
 export default function AuthPage() {
   const [cpf, setCpf] = useState("");
@@ -41,7 +42,11 @@ export default function AuthPage() {
     setIsLoading(true);
     
     try {
+      // Salva no armazenamento local para autenticação rápida
       await saveCPF(cpf);
+      
+      // Cria ou busca usuário no Firestore
+      const user = await createUser(cpf);
       
       toast({
         title: "Login realizado com sucesso",
