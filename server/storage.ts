@@ -24,6 +24,7 @@ export interface IStorage {
   // Usuários
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByCpf(cpf: string): Promise<User | undefined>;  // Adicionado método para buscar por CPF
   createUser(user: InsertUser): Promise<User>;
 
   // Viagens
@@ -64,6 +65,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const results = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return results[0];
+  }
+  
+  async getUserByCpf(cpf: string): Promise<User | undefined> {
+    const results = await db.select().from(users).where(eq(users.cpf, cpf)).limit(1);
     return results[0];
   }
 

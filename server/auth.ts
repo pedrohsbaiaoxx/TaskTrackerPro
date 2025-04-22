@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { v4 as uuidv4 } from 'uuid';
 
 declare global {
   namespace Express {
@@ -89,6 +90,40 @@ export function setupAuth(app: Express) {
       req.login(user, (err) => {
         if (err) return next(err);
         res.status(201).json(user);
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  // Rota especial para autenticação por CPF (sem senha)
+  app.post("/api/auth/cpf", async (req, res, next) => {
+    try {
+      const { cpf } = req.body;
+      
+      if (!cpf) {
+        return res.status(400).json({ message: "CPF é obrigatório" });
+      }
+      
+      // Busca o usuário pelo CPF
+      let user = await storage.getUserByCpf(cpf);
+      
+      // Se não existir, cria um novo usuário
+      if (!user) {
+        // Cria um username aleatório e uma senha aleatória
+        const username = `user_${uuidv4().substring(0, 8)}`;
+        const password = uuidv4();
+        
+        user = await storage.createUser({
+          username,
+          password: await hashPassword(password),
+          cpf
+        });
+      }
+      
+      req.login(user, (err) => {
+        if (err) return next(err);
+        return res.status(200).json(user);
       });
     } catch (error) {
       next(error);
