@@ -70,7 +70,36 @@ const ExpenseList = () => {
   const loadTripAndExpenses = async () => {
     setIsLoading(true);
     try {
-      // Load trip data
+      // Primeiro verificar a viagem no servidor
+      try {
+        console.log(`Verificando no servidor se a viagem ${tripId} existe`);
+        const response = await fetch(`/api/trips/by-cpf/${await getCPF()}`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const tripsFromServer = await response.json();
+          const serverTrip = tripsFromServer.find((t: any) => t.id === tripId || t.id === parseInt(tripId as string));
+          
+          if (!serverTrip) {
+            // Se a viagem não existir no servidor, verificar se outra viagem existe
+            const newTrip = tripsFromServer[0];
+            if (newTrip) {
+              console.log(`Viagem ${tripId} não encontrada no servidor, redirecionando para ${newTrip.id}`);
+              navigate(`/trip/${newTrip.id}`);
+              return;
+            } else {
+              console.log(`Nenhuma viagem encontrada no servidor`);
+              navigate("/");
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao verificar viagem no servidor:", error);
+      }
+      
+      // Agora carrega a viagem do IndexedDB
       const tripData = await getTrip(tripId);
       if (!tripData) {
         toast({
