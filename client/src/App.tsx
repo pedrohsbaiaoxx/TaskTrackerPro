@@ -79,6 +79,7 @@ function Router() {
     const checkAuth = async () => {
       try {
         const storedCpf = await getCPF();
+        console.log("CPF armazenado encontrado:", storedCpf);
         setCpf(storedCpf);
       } catch (error) {
         console.error("Erro ao verificar CPF:", error);
@@ -98,20 +99,18 @@ function Router() {
     );
   }
   
-  // Se já estiver autenticado e estiver na página inicial, não redirecionar mais
-  // Vamos utilizar o componente de rota para decidir
+  console.log("Estado do CPF no Router:", cpf);
   
   return (
     <Switch>
-      <Route path="/" component={cpf ? TripList : RedirectToAuth} />
-      <ProtectedRoute path="/dashboard" component={TripList} />
-      <ProtectedRoute path="/new-trip" component={TripList} />
-      <ProtectedRoute path="/trip/:id" component={ExpenseList} />
-      <ProtectedRoute path="/trip/:id/new-expense" component={ExpenseList} />
-      <ProtectedRoute path="/trip/:id/edit-expense/:expenseId" component={ExpenseList} />
-      <ProtectedRoute path="/trip/:id/view-receipt/:expenseId" component={ExpenseList} />
-      <Route path="/auth" component={AuthPageCpf} />
       <Route path="/auth-cpf" component={AuthPageCpf} />
+      <Route path="/dashboard" component={TripList} />
+      <Route path="/new-trip" component={TripList} />
+      <Route path="/trip/:id" component={ExpenseList} />
+      <Route path="/trip/:id/new-expense" component={ExpenseList} />
+      <Route path="/trip/:id/edit-expense/:expenseId" component={ExpenseList} />
+      <Route path="/trip/:id/view-receipt/:expenseId" component={ExpenseList} />
+      <Route path="/" component={cpf ? TripList : RedirectToAuth} />
       <Route component={NotFound} />
     </Switch>
   );

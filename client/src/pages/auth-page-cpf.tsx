@@ -98,29 +98,15 @@ export default function AuthPage() {
         description: "Você foi identificado com sucesso",
       });
       
-      console.log("Autenticação bem-sucedida, preparando para navegação");
+      console.log("Autenticação bem-sucedida. CPF salvo:", cpf);
       
-      // Garantir que o banco de dados está inicializado e o CPF está salvo
-      try {
-        // Verificar se o CPF está salvo corretamente
-        const savedCpf = await fetch('/api/user/cpf', {
-          credentials: 'include',
-        }).then(res => res.json()).then(data => data.cpf);
+      // Abordagem simplificada: esperar um pouco e navegar diretamente
+      setTimeout(() => {
+        console.log("Redirecionando para a página de viagens");
         
-        console.log("CPF verificado no servidor:", savedCpf);
-        
-        // Navegação direta para o dashboard após confirmação
-        setTimeout(() => {
-          console.log("Redirecionando para dashboard");
-          navigate("/dashboard");
-        }, 1000);
-      } catch (error) {
-        console.error("Erro ao verificar CPF após login:", error);
-        // Em caso de erro, tenta navegar para a raiz mesmo assim
-        setTimeout(() => {
-          navigate("/");
-        }, 1000);
-      }
+        // Forçar uma nova sessão de navegação para limpar qualquer estado anterior
+        window.location.href = "/dashboard";
+      }, 1500);
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       toast({
