@@ -37,6 +37,7 @@ import {
   calculateTripSummary,
   getExpense
 } from "@/lib/expenseStore";
+import { deleteExpenseFromServer } from "@/lib/syncService";
 import ExpenseModal from "@/components/ExpenseModal";
 import ReceiptPreviewModal from "@/components/ReceiptPreviewModal";
 
@@ -272,7 +273,19 @@ const ExpenseList = () => {
     if (!expenseToDelete?.id) return;
     
     try {
+      // Primeiro tentamos excluir no servidor
+      console.log(`Tentando excluir despesa ${expenseToDelete.id} no servidor...`);
+      const serverDeleteSuccess = await deleteExpenseFromServer(expenseToDelete.id);
+      
+      if (serverDeleteSuccess) {
+        console.log(`Despesa ${expenseToDelete.id} excluída com sucesso no servidor`);
+      } else {
+        console.warn(`Erro ao excluir despesa ${expenseToDelete.id} no servidor`);
+      }
+      
+      // Em seguida, excluímos no IndexedDB local
       await deleteExpense(expenseToDelete.id);
+      console.log(`Despesa ${expenseToDelete.id} excluída com sucesso no IndexedDB local`);
       
       // Removemos a despesa excluída do array local
       setExpenses(expenses.filter(e => e.id !== expenseToDelete.id));
@@ -285,7 +298,7 @@ const ExpenseList = () => {
         description: "A despesa foi excluída com sucesso",
       });
     } catch (error) {
-      console.error("Error deleting expense:", error);
+      console.error("Erro ao excluir despesa:", error);
       toast({
         title: "Erro ao excluir",
         description: "Ocorreu um erro ao excluir a despesa",
