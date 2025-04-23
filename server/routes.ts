@@ -188,15 +188,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/trips", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
-      
-      // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      const userId = req.user.id;
-      
       // Processar as datas antes de salvar
-      const { startDate, endDate, ...restBody } = req.body;
+      const { startDate, endDate, cpf, ...restBody } = req.body;
       
       // Convertendo datas para formato compatível com PostgreSQL
       const processedStartDate = startDate ? new Date(startDate) : null;
@@ -207,12 +200,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- StartDate processado:", processedStartDate);
       console.log("- EndDate original:", endDate);
       console.log("- EndDate processado:", processedEndDate);
+      console.log("- CPF:", cpf);
+      
+      if (!cpf) {
+        return res.status(400).json({ message: "CPF é obrigatório" });
+      }
+      
+      let userId = null;
+      
+      // Verificar se já existe um usuário com esse CPF
+      const existingUser = await storage.getUserByCpf(cpf);
+      
+      if (existingUser) {
+        userId = existingUser.id;
+      } else {
+        // Criar um novo usuário com esse CPF
+        const newUser = await storage.createUser({
+          username: `user_${Date.now()}`,
+          password: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
+          cpf: cpf
+        });
+        userId = newUser.id;
+      }
       
       const tripData = {
         ...restBody,
         startDate: processedStartDate,
         endDate: processedEndDate,
-        userId
+        cpf,  // salvar o CPF diretamente na viagem
+        userId // referência ao usuário
       };
       
       const trip = await storage.createTrip(tripData);
@@ -296,20 +312,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rotas de despesas
   app.get("/api/trips/:tripId/expenses", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
-      
       const tripId = parseInt(req.params.tripId);
       const trip = await storage.getTrip(tripId);
       
       if (!trip) {
         return res.status(404).json({ message: "Viagem não encontrada" });
-      }
-      
-      // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      if (trip.userId !== req.user.id) {
-        return res.status(403).json({ message: "Acesso negado" });
       }
       
       const expenses = await storage.getExpensesByTripId(tripId);
@@ -321,20 +328,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/trips/:tripId/expenses", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
-      
       const tripId = parseInt(req.params.tripId);
       const trip = await storage.getTrip(tripId);
       
       if (!trip) {
         return res.status(404).json({ message: "Viagem não encontrada" });
-      }
-      
-      // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      if (trip.userId !== req.user.id) {
-        return res.status(403).json({ message: "Acesso negado" });
       }
       
       // Extrair os dados do corpo da requisição
@@ -425,10 +423,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.put("/api/expenses/:id", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
-      
       const expenseId = parseInt(req.params.id);
       const expense = await storage.getExpense(expenseId);
       
@@ -442,11 +436,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Viagem não encontrada" });
       }
       
-      // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      if (trip.userId !== req.user.id) {
-        return res.status(403).json({ message: "Acesso negado" });
-      }
-      
       await storage.updateExpense(expenseId, req.body);
       res.status(200).json({ message: "Despesa atualizada com sucesso" });
     } catch (error) {
@@ -456,20 +445,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.delete("/api/expenses/:id", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
-      
       const expenseId = parseInt(req.params.id);
       
       // Importar o módulo db diretamente para evitar problemas com o ORM
       const { pool } = await import('./db');
       
-      // Primeiro, verificamos se a despesa existe e a quem pertence
+      // Primeiro, verificamos se a despesa existe
       const checkQuery = `
-        SELECT e.id, e.trip_id, t.user_id 
+        SELECT e.id, e.trip_id
         FROM expenses e
-        JOIN trips t ON e.trip_id = t.id
         WHERE e.id = $1
       `;
       
@@ -477,13 +461,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (checkResult.rows.length === 0) {
         return res.status(404).json({ message: "Despesa não encontrada" });
-      }
-      
-      const expense = checkResult.rows[0];
-      
-      // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      if (expense.user_id !== req.user.id) {
-        return res.status(403).json({ message: "Acesso negado" });
       }
       
       // Executar a query de exclusão diretamente
