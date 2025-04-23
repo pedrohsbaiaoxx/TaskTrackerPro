@@ -82,19 +82,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Buscando despesas para a viagem ${tripIdNum} no servidor`);
       
       // Buscamos direto do banco de dados
-      const expenses = await storage.getExpensesByTripId(tripIdNum);
-      console.log(`Encontradas ${expenses.length} despesas para a viagem ${tripIdNum}`);
-      
-      // Formatamos as datas para garantir compatibilidade
-      const formattedExpenses = expenses.map(expense => {
-        return {
-          ...expense,
-          date: expense.date ? new Date(expense.date).toISOString() : null,
-          createdAt: expense.createdAt ? new Date(expense.createdAt).toISOString() : new Date().toISOString()
-        };
-      });
-      
-      res.json(formattedExpenses);
+      try {
+        // Primeiro tentamos usar o storage
+        const expenses = await storage.getExpensesByTripId(tripIdNum);
+        console.log(`Encontradas ${expenses.length} despesas para a viagem ${tripIdNum}`);
+        
+        // Verificamos se as despesas têm campos createdAt
+        const formattedExpenses = expenses.map(expense => {
+          // Garantimos que o objeto de retorno tenha todos os campos necessários
+          const createdAt = expense.createdAt 
+            ? new Date(expense.createdAt).toISOString() 
+            : new Date().toISOString();
+            
+          const updatedAt = expense.updatedAt 
+            ? new Date(expense.updatedAt).toISOString() 
+            : createdAt;
+            
+          return {
+            ...expense,
+            date: expense.date ? new Date(expense.date).toISOString() : null,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+          };
+        });
+        
+        res.json(formattedExpenses);
+      } catch (storageError) {
+        console.error(`Erro no storage ao buscar despesas: ${storageError}`);
+        
+        // Se falhar, tentamos buscar diretamente usando SQL
+        try {
+          const { db } = await import('./db');
+          const { expenses } = await import('@shared/schema');
+          const { eq } = await import('drizzle-orm');
+          
+          console.log(`Encontradas ${result.length} despesas via SQL para a viagem ${tripIdNum}`);
+          
+          // Formatamos as datas
+          const formattedExpenses = result.map(expense => {
+            const createdAt = expense.createdAt 
+              ? new Date(expense.createdAt).toISOString() 
+              : new Date().toISOString();
+              
+            const updatedAt = expense.updatedAt 
+              ? new Date(expense.updatedAt).toISOString() 
+              : createdAt;
+              
+            return {
+              ...expense,
+              date: expense.date ? new Date(expense.date).toISOString() : null,
+              createdAt: createdAt,
+              updatedAt: updatedAt
+            };
+          });
+          
+          res.json(formattedExpenses);
+        } catch (sqlError) {
+          console.error(`Erro ao consultar SQL: ${sqlError}`);
+          throw sqlError;
+        }
+      }
     } catch (error) {
       console.error(`Erro ao buscar despesas por viagem: ${error}`);
       next(error);

@@ -82,7 +82,86 @@ const ExpenseList = () => {
       }
       setTrip(tripData);
       
-      // Load expenses
+      // Primeiro tenta carregar despesas diretamente do servidor
+      try {
+        console.log(`Tentando carregar despesas do servidor para a viagem ${tripId}`);
+        const response = await fetch(`/api/expenses/by-trip/${tripId}`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const serverExpenses = await response.json();
+          console.log(`Carregadas ${serverExpenses.length} despesas do servidor`);
+          
+          // Converter datas
+          const formattedExpenses = serverExpenses.map((expense: any) => ({
+            ...expense,
+            date: expense.date ? new Date(expense.date) : null,
+            createdAt: expense.createdAt ? new Date(expense.createdAt) : new Date(),
+          }));
+          
+          setExpenses(formattedExpenses);
+          
+          // Calculate summary based on server data
+          // Calcular total de refeições (café + almoço + jantar)
+          let mealsTotal = 0;
+          let transportTotal = 0;
+          let parkingTotal = 0;
+          let mileageTotal = 0;
+          let otherTotal = 0;
+          let grandTotal = 0;
+          
+          formattedExpenses.forEach(exp => {
+            // Somar valores de refeições
+            const breakfast = exp.breakfastValue ? parseFloat(exp.breakfastValue) : 0;
+            const lunch = exp.lunchValue ? parseFloat(exp.lunchValue) : 0;
+            const dinner = exp.dinnerValue ? parseFloat(exp.dinnerValue) : 0;
+            mealsTotal += breakfast + lunch + dinner;
+            
+            // Somar transporte
+            transportTotal += exp.transportValue ? parseFloat(exp.transportValue) : 0;
+            
+            // Somar estacionamento
+            parkingTotal += exp.parkingValue ? parseFloat(exp.parkingValue) : 0;
+            
+            // Somar km rodado (valor em R$)
+            mileageTotal += exp.mileageValue ? parseFloat(exp.mileageValue) : 0;
+            
+            // Somar outros
+            otherTotal += exp.otherValue ? parseFloat(exp.otherValue) : 0;
+            
+            // Somar total geral (ou usar totalValue se disponível)
+            if (exp.totalValue) {
+              grandTotal += parseFloat(exp.totalValue);
+            } else {
+              grandTotal += (breakfast + lunch + dinner + 
+                            (exp.transportValue ? parseFloat(exp.transportValue) : 0) +
+                            (exp.parkingValue ? parseFloat(exp.parkingValue) : 0) +
+                            (exp.mileageValue ? parseFloat(exp.mileageValue) : 0) +
+                            (exp.otherValue ? parseFloat(exp.otherValue) : 0));
+            }
+          });
+          
+          const tempSummary: ExpenseSummary = {
+            meals: mealsTotal,
+            transport: transportTotal,
+            parking: parkingTotal,
+            mileage: mileageTotal,
+            other: otherTotal,
+            total: grandTotal
+          };
+          
+          setSummary(tempSummary);
+          return; // Interrompe a execução se conseguiu carregar do servidor
+        } else {
+          console.warn(`Erro ao buscar despesas do servidor: ${response.status}`);
+        }
+      } catch (serverError) {
+        console.warn("Erro ao carregar despesas do servidor:", serverError);
+      }
+      
+      // Fallback: Load expenses from IndexedDB
+      console.log("Usando fallback para carregar despesas do IndexedDB");
       const expenseList = await getExpensesByTrip(tripId);
       setExpenses(expenseList);
       

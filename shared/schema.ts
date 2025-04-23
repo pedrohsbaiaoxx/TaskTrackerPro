@@ -55,6 +55,9 @@ export const expenses = pgTable("expenses", {
   otherDescription: text("other_description"),
   receipt: text("receipt").notNull(), // Base64 encoded image
   totalValue: text("total_value").notNull(),
+  // Metadados
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertExpenseSchema = createInsertSchema(expenses).pick({
