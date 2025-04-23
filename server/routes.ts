@@ -34,9 +34,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rota para buscar viagens pelo CPF
   app.get("/api/trips/by-cpf/:cpf", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
+      // Autenticação não é necessária para buscar viagens por CPF
+      // Isso é necessário para que os dispositivos móveis possam 
+      // sincronizar mesmo sem estarem completamente autenticados
       
       const { cpf } = req.params;
       if (!cpf) {
@@ -46,6 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log para debug
       console.log(`Buscando viagens para o CPF ${cpf} no servidor`);
       
+      // Buscamos direto do banco de dados usando o Drizzle
       const trips = await storage.getTripsByCpf(cpf);
       console.log(`Encontradas ${trips.length} viagens para o CPF ${cpf}`);
       
@@ -65,6 +66,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(formattedTrips);
     } catch (error) {
       console.error(`Erro ao buscar viagens por CPF: ${error}`);
+      next(error);
+    }
+  });
+  
+  // Nova rota para buscar todas as despesas de uma viagem por ID
+  app.get("/api/expenses/by-trip/:tripId", async (req, res, next) => {
+    try {
+      const { tripId } = req.params;
+      if (!tripId) {
+        return res.status(400).json({ message: "ID da viagem é obrigatório" });
+      }
+      
+      const tripIdNum = parseInt(tripId);
+      console.log(`Buscando despesas para a viagem ${tripIdNum} no servidor`);
+      
+      // Buscamos direto do banco de dados
+      const expenses = await storage.getExpensesByTripId(tripIdNum);
+      console.log(`Encontradas ${expenses.length} despesas para a viagem ${tripIdNum}`);
+      
+      // Formatamos as datas para garantir compatibilidade
+      const formattedExpenses = expenses.map(expense => {
+        return {
+          ...expense,
+          date: expense.date ? new Date(expense.date).toISOString() : null,
+          createdAt: expense.createdAt ? new Date(expense.createdAt).toISOString() : new Date().toISOString()
+        };
+      });
+      
+      res.json(formattedExpenses);
+    } catch (error) {
+      console.error(`Erro ao buscar despesas por viagem: ${error}`);
       next(error);
     }
   });
