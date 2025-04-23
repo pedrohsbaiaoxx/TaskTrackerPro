@@ -1,5 +1,6 @@
 import { Trip, Expense } from "@shared/schema";
 import { format } from "date-fns";
+import { apiRequest } from "./queryClient";
 
 // Define the database name and store names
 const DB_NAME = "ExpenseTrackerDB";
@@ -103,6 +104,36 @@ export async function getCPF(): Promise<string | null> {
 
 // Trip functions
 export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promise<number> {
+  try {
+    // Primeiro, tenta salvar no servidor
+    const response = await apiRequest("POST", "/api/trips", trip);
+    
+    if (response.ok) {
+      const serverTrip = await response.json();
+      
+      // Também salva localmente para disponibilidade offline
+      const db = await getDB();
+      const transaction = db.transaction([TRIPS_STORE], "readwrite");
+      const store = transaction.objectStore(TRIPS_STORE);
+      
+      const newTrip: TripData = {
+        ...trip,
+        id: serverTrip.id, // Usa o ID do servidor
+        createdAt: new Date(serverTrip.createdAt)
+      };
+      
+      return new Promise((resolve, reject) => {
+        const request = store.add(newTrip);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(serverTrip.id);
+        transaction.oncomplete = () => db.close();
+      });
+    }
+  } catch (error) {
+    console.warn("Erro ao salvar viagem no servidor, salvando apenas localmente:", error);
+  }
+  
+  // Fallback para salvar apenas localmente se o servidor falhar
   const db = await getDB();
   const transaction = db.transaction([TRIPS_STORE], "readwrite");
   const store = transaction.objectStore(TRIPS_STORE);
@@ -121,6 +152,43 @@ export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promis
 }
 
 export async function updateTrip(id: number, trip: Partial<TripData>): Promise<void> {
+  try {
+    // Primeiro, tenta atualizar no servidor
+    const response = await apiRequest("PUT", `/api/trips/${id}`, trip);
+    
+    if (response.ok) {
+      // Se a atualização no servidor for bem-sucedida, atualiza localmente
+      const db = await getDB();
+      const transaction = db.transaction([TRIPS_STORE], "readwrite");
+      const store = transaction.objectStore(TRIPS_STORE);
+      
+      return new Promise((resolve, reject) => {
+        const request = store.get(id);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const existingTrip = request.result;
+          if (!existingTrip) {
+            // Se não existir localmente, busca a versão atualizada do servidor
+            resolve();
+            return;
+          }
+          
+          const updatedTrip = { ...existingTrip, ...trip };
+          const updateRequest = store.put(updatedTrip);
+          
+          updateRequest.onerror = () => reject(updateRequest.error);
+          updateRequest.onsuccess = () => resolve();
+        };
+        
+        transaction.oncomplete = () => db.close();
+      });
+    }
+  } catch (error) {
+    console.warn("Erro ao atualizar viagem no servidor, atualizando apenas localmente:", error);
+  }
+  
+  // Fallback para atualizar apenas localmente se o servidor falhar
   const db = await getDB();
   const transaction = db.transaction([TRIPS_STORE], "readwrite");
   const store = transaction.objectStore(TRIPS_STORE);
@@ -148,6 +216,25 @@ export async function updateTrip(id: number, trip: Partial<TripData>): Promise<v
 }
 
 export async function deleteTrip(id: number): Promise<void> {
+  try {
+    // Primeiro, tenta deletar no servidor
+    const response = await apiRequest("DELETE", `/api/trips/${id}`);
+    
+    if (response.ok) {
+      // Se a deleção no servidor for bem-sucedida, deleta localmente
+      await deleteLocalTrip(id);
+      return;
+    }
+  } catch (error) {
+    console.warn("Erro ao deletar viagem no servidor, deletando apenas localmente:", error);
+  }
+  
+  // Fallback para deletar apenas localmente se o servidor falhar
+  await deleteLocalTrip(id);
+}
+
+// Função auxiliar para deletar viagem localmente
+async function deleteLocalTrip(id: number): Promise<void> {
   const db = await getDB();
   const transaction = db.transaction([TRIPS_STORE, EXPENSES_STORE], "readwrite");
   const tripsStore = transaction.objectStore(TRIPS_STORE);
