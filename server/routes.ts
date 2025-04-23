@@ -74,14 +74,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
       const userId = req.user.id;
+      
+      // Processar as datas antes de salvar
+      const { startDate, endDate, ...restBody } = req.body;
+      
+      // Convertendo datas para formato compatível com PostgreSQL
+      const processedStartDate = startDate ? new Date(startDate) : null;
+      const processedEndDate = endDate ? new Date(endDate) : null;
+      
+      console.log("Processando viagem antes de salvar no BD:");
+      console.log("- StartDate original:", startDate);
+      console.log("- StartDate processado:", processedStartDate);
+      console.log("- EndDate original:", endDate);
+      console.log("- EndDate processado:", processedEndDate);
+      
       const tripData = {
-        ...req.body,
+        ...restBody,
+        startDate: processedStartDate,
+        endDate: processedEndDate,
         userId
       };
       
       const trip = await storage.createTrip(tripData);
       res.status(201).json(trip);
     } catch (error) {
+      console.error("Erro ao criar viagem:", error);
       next(error);
     }
   });
@@ -103,10 +120,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (trip.userId !== req.user.id) {
         return res.status(403).json({ message: "Acesso negado" });
       }
+
+      // Processar as datas antes de atualizar
+      const { startDate, endDate, ...restBody } = req.body;
       
-      await storage.updateTrip(tripId, req.body);
+      // Convertendo datas para formato compatível com PostgreSQL
+      const processedStartDate = startDate ? new Date(startDate) : null;
+      const processedEndDate = endDate ? new Date(endDate) : null;
+      
+      console.log("Processando viagem antes de atualizar no BD:");
+      console.log("- StartDate original:", startDate);
+      console.log("- StartDate processado:", processedStartDate);
+      console.log("- EndDate original:", endDate);
+      console.log("- EndDate processado:", processedEndDate);
+      
+      const tripData = {
+        ...restBody,
+        startDate: processedStartDate,
+        endDate: processedEndDate
+      };
+      
+      await storage.updateTrip(tripId, tripData);
       res.status(200).json({ message: "Viagem atualizada com sucesso" });
     } catch (error) {
+      console.error("Erro ao atualizar viagem:", error);
       next(error);
     }
   });
