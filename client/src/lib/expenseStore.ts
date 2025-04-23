@@ -837,13 +837,31 @@ export async function calculateTripSummary(tripId: number): Promise<ExpenseSumma
   };
   
   expenses.forEach(expense => {
-    summary.meals += expense.mealValue ? parseFloat(expense.mealValue) : 0;
+    // Calcular total de refeições (agora somando os valores individuais)
+    const breakfastValue = expense.breakfastValue ? parseFloat(expense.breakfastValue) : 0;
+    const lunchValue = expense.lunchValue ? parseFloat(expense.lunchValue) : 0;
+    const dinnerValue = expense.dinnerValue ? parseFloat(expense.dinnerValue) : 0;
+    summary.meals += breakfastValue + lunchValue + dinnerValue;
+    
+    // Outros valores
     summary.transport += expense.transportValue ? parseFloat(expense.transportValue) : 0;
     summary.parking += expense.parkingValue ? parseFloat(expense.parkingValue) : 0;
     summary.mileage += expense.mileageValue ? parseFloat(expense.mileageValue) : 0;
     summary.other += expense.otherValue ? parseFloat(expense.otherValue) : 0;
-    summary.total += expense.totalValue ? parseFloat(expense.totalValue) : 0;
+    
+    // Para o total, usamos o valor total registrado ou recalculamos
+    if (expense.totalValue) {
+      summary.total += parseFloat(expense.totalValue);
+    } else {
+      summary.total += breakfastValue + lunchValue + dinnerValue + 
+                       (expense.transportValue ? parseFloat(expense.transportValue) : 0) +
+                       (expense.parkingValue ? parseFloat(expense.parkingValue) : 0) +
+                       (expense.mileageValue ? parseFloat(expense.mileageValue) : 0) +
+                       (expense.otherValue ? parseFloat(expense.otherValue) : 0);
+    }
   });
+  
+  console.log(`[calculateTripSummary] Trip ${tripId}: Total value: ${summary.total}, ${expenses.length} expenses`);
   
   return summary;
 }

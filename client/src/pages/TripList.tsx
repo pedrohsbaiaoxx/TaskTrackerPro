@@ -24,7 +24,8 @@ import {
   formatDateRange,
   getCPF,
   calculateTripSummary,
-  deleteAndRecreateDB
+  deleteAndRecreateDB,
+  getExpensesByTrip
 } from "@/lib/expenseStore";
 import TripModal from "@/components/TripModal";
 
@@ -73,7 +74,9 @@ const TripList = () => {
         if (trip.id) {
           console.log("TripList: Calculando resumo para viagem ID:", trip.id);
           const summary = await calculateTripSummary(trip.id);
-          const expenseCount = summary.total > 0 ? 1 : 0;
+          const expenses = await getExpensesByTrip(trip.id);
+          const expenseCount = expenses.length;
+          console.log(`TripList: Resumo para viagem ${trip.id} - total: ${summary.total}, despesas: ${expenseCount}`);
           summaries[trip.id] = { total: summary.total, count: expenseCount };
         }
       }
@@ -134,7 +137,9 @@ const TripList = () => {
           if (trip.id) {
             console.log("TripList: Calculando resumo para viagem ID:", trip.id);
             const summary = await calculateTripSummary(trip.id);
-            const expenseCount = summary.total > 0 ? 1 : 0; // Simplificado por enquanto
+            const expenses = await getExpensesByTrip(trip.id);
+            const expenseCount = expenses.length;
+            console.log(`TripList: Resumo para viagem ${trip.id} - total: ${summary.total}, despesas: ${expenseCount}`);
             summaries[trip.id] = { total: summary.total, count: expenseCount };
           }
         }
