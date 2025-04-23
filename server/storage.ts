@@ -31,6 +31,7 @@ export interface IStorage {
   getTrip(id: number): Promise<Trip | undefined>;
   getTripsByUserId(userId: number): Promise<Trip[]>;
   getTripsByCpf(cpf: string): Promise<Trip[]>;
+  getAllTrips(): Promise<Trip[]>;
   createTrip(trip: InsertTrip): Promise<Trip>;
   updateTrip(id: number, trip: Partial<InsertTrip>): Promise<void>;
   deleteTrip(id: number): Promise<void>;
@@ -90,6 +91,10 @@ export class DatabaseStorage implements IStorage {
 
   async getTripsByCpf(cpf: string): Promise<Trip[]> {
     return await db.select().from(trips).where(eq(trips.cpf, cpf));
+  }
+  
+  async getAllTrips(): Promise<Trip[]> {
+    return await db.select().from(trips);
   }
 
   async createTrip(trip: InsertTrip): Promise<Trip> {
