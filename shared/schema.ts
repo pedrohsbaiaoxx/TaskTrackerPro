@@ -41,7 +41,11 @@ export const expenses = pgTable("expenses", {
   date: timestamp("date").notNull(),
   destination: text("destination").notNull(),
   justification: text("justification").notNull(),
-  mealValue: text("meal_value"),
+  // Refeições separadas
+  breakfastValue: text("breakfast_value"),
+  lunchValue: text("lunch_value"),
+  dinnerValue: text("dinner_value"),
+  // Transporte e outros
   transportValue: text("transport_value"),
   parkingValue: text("parking_value"),
   mileage: integer("mileage"),
@@ -57,7 +61,9 @@ export const insertExpenseSchema = createInsertSchema(expenses).pick({
   date: true,
   destination: true,
   justification: true,
-  mealValue: true,
+  breakfastValue: true,
+  lunchValue: true,
+  dinnerValue: true,
   transportValue: true,
   parkingValue: true,
   mileage: true,

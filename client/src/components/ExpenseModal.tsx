@@ -30,8 +30,10 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
   const [destination, setDestination] = useState(expense?.destination || "");
   const [justification, setJustification] = useState(expense?.justification || "");
   
-  // Expense values
-  const [mealValue, setMealValue] = useState(expense?.mealValue || "");
+  // Expense values - mantendo a mesma sequência da planilha
+  const [breakfastValue, setBreakfastValue] = useState(expense?.breakfastValue || "");
+  const [lunchValue, setLunchValue] = useState(expense?.lunchValue || "");
+  const [dinnerValue, setDinnerValue] = useState(expense?.dinnerValue || "");  
   const [transportValue, setTransportValue] = useState(expense?.transportValue || "");
   const [parkingValue, setParkingValue] = useState(expense?.parkingValue || "");
   const [mileage, setMileage] = useState(expense?.mileage ? expense.mileage.toString() : "");
@@ -58,7 +60,9 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
     setDate(expense?.date ? format(new Date(expense.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
     setDestination(expense?.destination || "");
     setJustification(expense?.justification || "");
-    setMealValue(expense?.mealValue || "");
+    setBreakfastValue(expense?.breakfastValue || "");
+    setLunchValue(expense?.lunchValue || "");
+    setDinnerValue(expense?.dinnerValue || "");
     setTransportValue(expense?.transportValue || "");
     setParkingValue(expense?.parkingValue || "");
     setMileage(expense?.mileage ? expense.mileage.toString() : "");
@@ -77,15 +81,17 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
 
   // Calculate total value
   useEffect(() => {
-    const meal = parseFloat(mealValue) || 0;
+    const breakfast = parseFloat(breakfastValue) || 0;
+    const lunch = parseFloat(lunchValue) || 0;
+    const dinner = parseFloat(dinnerValue) || 0;
     const transport = parseFloat(transportValue) || 0;
     const parking = parseFloat(parkingValue) || 0;
     const mileageValueFloat = parseFloat(mileageValue) || 0;
     const other = parseFloat(otherValue) || 0;
     
-    const total = meal + transport + parking + mileageValueFloat + other;
+    const total = breakfast + lunch + dinner + transport + parking + mileageValueFloat + other;
     setTotalValue(total.toFixed(2));
-  }, [mealValue, transportValue, parkingValue, mileageValue, otherValue]);
+  }, [breakfastValue, lunchValue, dinnerValue, transportValue, parkingValue, mileageValue, otherValue]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,7 +150,9 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
         date: new Date(date),
         destination,
         justification,
-        mealValue,
+        breakfastValue,
+        lunchValue,
+        dinnerValue,
         transportValue,
         parkingValue,
         mileage: mileage ? parseInt(mileage) : 0,
@@ -227,21 +235,50 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-medium mb-3">Valores</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Refeições */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="expense-meal">Valor - Refeição (R$)</Label>
+                  <Label htmlFor="expense-breakfast">Café da manhã (R$)</Label>
                   <Input
-                    id="expense-meal"
+                    id="expense-breakfast"
                     type="number"
                     min="0"
                     step="0.01"
-                    value={mealValue}
-                    onChange={(e) => setMealValue(e.target.value)}
+                    value={breakfastValue}
+                    onChange={(e) => setBreakfastValue(e.target.value)}
                     placeholder="0,00"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="expense-transport">Valor - Transporte (R$)</Label>
+                  <Label htmlFor="expense-lunch">Almoço (R$)</Label>
+                  <Input
+                    id="expense-lunch"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={lunchValue}
+                    onChange={(e) => setLunchValue(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="expense-dinner">Jantar (R$)</Label>
+                  <Input
+                    id="expense-dinner"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={dinnerValue}
+                    onChange={(e) => setDinnerValue(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+              
+              {/* Transporte */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="expense-transport">Taxi/Uber (R$)</Label>
                   <Input
                     id="expense-transport"
                     type="number"
@@ -252,9 +289,6 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
                     placeholder="0,00"
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="grid gap-2">
                   <Label htmlFor="expense-parking">Estacionamento/Pedágio (R$)</Label>
                   <Input
@@ -267,6 +301,10 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
                     placeholder="0,00"
                   />
                 </div>
+              </div>
+              
+              {/* Quilometragem e outros */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="grid gap-2">
                   <Label htmlFor="expense-mileage">KM rodado</Label>
                   <div className="flex">
@@ -285,9 +323,6 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Valor por KM: R$ 1,09</p>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="expense-other">Outros gastos (R$)</Label>
                   <Input
@@ -300,15 +335,17 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
                     placeholder="0,00"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="expense-other-description">Especificar "Outros"</Label>
-                  <Input
-                    id="expense-other-description"
-                    value={otherDescription}
-                    onChange={(e) => setOtherDescription(e.target.value)}
-                    placeholder="Descrição do gasto"
-                  />
-                </div>
+              </div>
+              
+              {/* Descrição de outros */}
+              <div className="grid gap-2">
+                <Label htmlFor="expense-other-description">Descrição outros gastos</Label>
+                <Input
+                  id="expense-other-description"
+                  value={otherDescription}
+                  onChange={(e) => setOtherDescription(e.target.value)}
+                  placeholder="Descrição do gasto"
+                />
               </div>
             </div>
             
