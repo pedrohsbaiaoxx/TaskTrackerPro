@@ -329,11 +329,11 @@ const ExpenseList = () => {
     if (expense.transportValue && parseFloat(expense.transportValue) > 0) {
       return { label: "Transporte", bgColor: "bg-green-100 text-green-800" };
     }
-    if (expense.mileage && expense.mileage > 0) {
-      return { label: "KM rodado", bgColor: "bg-purple-100 text-purple-800" };
-    }
     if (expense.parkingValue && parseFloat(expense.parkingValue) > 0) {
       return { label: "Estacionamento", bgColor: "bg-amber-100 text-amber-800" };
+    }
+    if (expense.mileage && expense.mileage > 0) {
+      return { label: "KM rodado", bgColor: "bg-purple-100 text-purple-800" };
     }
     if (expense.otherValue && parseFloat(expense.otherValue) > 0) {
       return { label: "Outros", bgColor: "bg-indigo-100 text-indigo-800" };
@@ -621,7 +621,7 @@ const ExpenseList = () => {
         <Card className="bg-white rounded-xl shadow-sm mb-6">
           <CardContent className="p-4">
             <h3 className="font-medium text-gray-500 mb-3">Resumo das Despesas</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Refeições</p>
                 <p className="font-mono font-medium text-lg">{formatCurrency(summary.meals)}</p>
@@ -629,6 +629,10 @@ const ExpenseList = () => {
               <div className="text-center p-3 bg-green-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Transporte</p>
                 <p className="font-mono font-medium text-lg">{formatCurrency(summary.transport)}</p>
+              </div>
+              <div className="text-center p-3 bg-amber-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Estacion.</p>
+                <p className="font-mono font-medium text-lg">{formatCurrency(summary.parking)}</p>
               </div>
               <div className="text-center p-3 bg-purple-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">KM rodado</p>
