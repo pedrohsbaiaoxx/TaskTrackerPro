@@ -230,7 +230,7 @@ const ExpenseList = () => {
   const loadReceiptForPreview = async (expenseId: number) => {
     try {
       const expense = await getExpense(expenseId);
-      if (expense && expense.tripId === tripId) {
+      if (expense && expense.tripId === tripId && expense.receipt) {
         setReceiptUrl(expense.receipt);
         setShowReceiptModal(true);
       } else {
@@ -310,9 +310,12 @@ const ExpenseList = () => {
   };
   
   const viewReceipt = (expense: ExpenseData) => {
-    setReceiptUrl(expense.receipt);
-    setShowReceiptModal(true);
-    navigate(`/trip/${tripId}/view-receipt/${expense.id}`, { replace: true });
+    // Só exibe o recibo se ele existir
+    if (expense.receipt) {
+      setReceiptUrl(expense.receipt);
+      setShowReceiptModal(true);
+      navigate(`/trip/${tripId}/view-receipt/${expense.id}`, { replace: true });
+    }
   };
   
   const goBack = () => {
@@ -751,16 +754,22 @@ const ExpenseList = () => {
                     </div>
                     
                     <div className="md:w-24 flex-shrink-0">
-                      <div 
-                        className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition"
-                        onClick={() => viewReceipt(expense)}
-                      >
-                        <img 
-                          src={expense.receipt} 
-                          alt="Comprovante" 
-                          className="w-full h-full object-cover" 
-                        />
-                      </div>
+                      {expense.receipt ? (
+                        <div 
+                          className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition"
+                          onClick={() => viewReceipt(expense)}
+                        >
+                          <img 
+                            src={expense.receipt} 
+                            alt="Comprovante" 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                      ) : (
+                        <div className="aspect-[3/4] bg-gray-100 rounded-lg flex items-center justify-center">
+                          <FileText className="text-gray-400" size={24} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
