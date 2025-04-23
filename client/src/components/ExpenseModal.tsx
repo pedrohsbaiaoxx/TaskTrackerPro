@@ -175,6 +175,7 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
       const dinner = parseFloat(dinnerValue) || 0;
       const mealTotal = (breakfast + lunch + dinner).toFixed(2);
       
+      const now = new Date();
       const expenseData = {
         tripId,
         date: parseDateWithoutTimezone(date),
@@ -192,7 +193,9 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
         receipt: receiptBase64,
         totalValue,
         // Para compatibilidade com código legado
-        mealValue: mealTotal
+        mealValue: mealTotal,
+        // Campos necessários para o TypeScript e banco de dados
+        updatedAt: now
       };
 
       if (isEditing && expense.id) {
@@ -202,11 +205,40 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
           description: "A despesa foi atualizada com sucesso",
         });
       } else {
-        await saveExpense(expenseData);
-        toast({
-          title: "Despesa criada",
-          description: "A nova despesa foi criada com sucesso",
-        });
+        // Primeiro salvamos no IndexedDB local para ter um ID
+        const localId = await saveExpense(expenseData);
+        
+        // Agora enviamos para o servidor
+        try {
+          // Adicionamos o ID local para possibilitar rastreamento depois
+          const now = new Date();
+          const syncResult = await syncExpenseToServer({
+            ...expenseData,
+            id: localId,
+            createdAt: now,
+            updatedAt: now
+          });
+          
+          if (syncResult) {
+            toast({
+              title: "Despesa criada",
+              description: "A despesa foi criada e sincronizada com o servidor",
+            });
+          } else {
+            toast({
+              title: "Despesa criada localmente",
+              description: "A despesa foi salva localmente, mas houve erro na sincronização com o servidor",
+              variant: "destructive"
+            });
+          }
+        } catch (syncError) {
+          console.error("Erro na sincronização:", syncError);
+          toast({
+            title: "Sincronização falhou",
+            description: "A despesa foi salva localmente, mas não foi enviada ao servidor",
+            variant: "destructive"
+          });
+        }
       }
 
       onSaved();
