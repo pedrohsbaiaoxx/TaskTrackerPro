@@ -7,6 +7,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar autenticação (cria as rotas /api/login, /api/register, /api/logout, /api/user)
   setupAuth(app);
   
+  // Rota para limpar o IndexedDB via API
+  app.post("/api/clear-indexeddb", (req, res) => {
+    // Esta rota é apenas um marcador para o cliente
+    // A limpeza real acontece no navegador
+    console.log("Solicitação para limpar o IndexedDB recebida");
+    res.status(200).json({ message: "Solicitação para limpar IndexedDB recebida" });
+  });
+  
   // Rotas de viagens
   app.get("/api/trips", async (req, res, next) => {
     try {
