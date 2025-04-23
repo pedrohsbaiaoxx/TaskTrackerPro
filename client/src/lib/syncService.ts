@@ -1,4 +1,11 @@
-import { TripData, ExpenseData, getTripsByCpf } from "./expenseStore";
+import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB } from "./expenseStore";
+
+// Define constantes usadas pelo banco de dados
+const DB_NAME = "ExpenseTrackerDB";
+const DB_VERSION = 2;
+const TRIPS_STORE = "trips";
+const EXPENSES_STORE = "expenses";
+const CPF_STORE = "cpf";
 
 // Função para sincronizar dados do servidor
 export async function syncTripsFromServer(cpf: string): Promise<boolean> {
@@ -95,19 +102,64 @@ export async function syncTripsFromServer(cpf: string): Promise<boolean> {
 // Limpa completamente o IndexedDB local para permitir sincronização total
 export async function clearLocalDatabase(): Promise<boolean> {
   try {
-    console.log("Limpando banco de dados local para sincronização...");
+    console.log("Iniciando limpeza completa do banco de dados local");
+    
+    // Usa a função importada de expenseStore.ts para limpeza e recriação
+    const success = await deleteAndRecreateDB();
+    
+    if (success) {
+      console.log("Banco de dados limpo e recriado com sucesso");
+      return true;
+    }
+    
+    // Fallback: Implementação manual se a função importada falhar
+    console.log("Fallback: tentando método alternativo de limpeza do banco");
     
     return new Promise<boolean>((resolve) => {
-      // Abre uma conexão e deleta o banco de dados inteiro
-      const deleteRequest = indexedDB.deleteDatabase("ExpenseTrackerDB");
+      // Fecha todas as conexões e deleta o banco de dados
+      const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
       
       deleteRequest.onsuccess = () => {
-        console.log("Banco de dados local limpo com sucesso");
-        resolve(true);
+        console.log("Banco de dados local deletado com sucesso");
+        
+        // Criar banco novamente com versão atualizada
+        const createRequest = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        createRequest.onupgradeneeded = (event) => {
+          try {
+            const db = (event.target as IDBOpenDBRequest).result;
+            
+            // Criar todas as stores necessárias
+            const tripsStore = db.createObjectStore(TRIPS_STORE, { keyPath: "id", autoIncrement: true });
+            tripsStore.createIndex("cpf", "cpf", { unique: false });
+            tripsStore.createIndex("createdAt", "createdAt", { unique: false });
+            
+            const expensesStore = db.createObjectStore(EXPENSES_STORE, { keyPath: "id", autoIncrement: true });
+            expensesStore.createIndex("tripId", "tripId", { unique: false });
+            expensesStore.createIndex("date", "date", { unique: false });
+            
+            db.createObjectStore(CPF_STORE, { keyPath: "id" });
+            
+            console.log("Estrutura do banco recriada com sucesso");
+          } catch (e) {
+            console.error("Erro ao recriar estrutura do banco:", e);
+          }
+        };
+        
+        createRequest.onsuccess = () => {
+          console.log("Banco de dados recriado com sucesso");
+          createRequest.result.close();
+          resolve(true);
+        };
+        
+        createRequest.onerror = () => {
+          console.error("Erro ao recriar banco de dados:", createRequest.error);
+          resolve(false);
+        };
       };
       
       deleteRequest.onerror = () => {
-        console.error("Erro ao limpar banco de dados local:", deleteRequest.error);
+        console.error("Erro ao deletar banco de dados:", deleteRequest.error);
         resolve(false);
       };
     });

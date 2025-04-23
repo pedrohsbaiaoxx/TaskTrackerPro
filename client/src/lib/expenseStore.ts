@@ -4,7 +4,8 @@ import { apiRequest } from "./queryClient";
 
 // Define the database name and store names
 const DB_NAME = "ExpenseTrackerDB";
-const DB_VERSION = 1;
+// Aumentamos a versão do DB para forçar uma migração limpa
+const DB_VERSION = 2;
 const TRIPS_STORE = "trips";
 const EXPENSES_STORE = "expenses";
 const CPF_STORE = "cpf";
@@ -23,44 +24,211 @@ export interface ExpenseData extends Omit<Expense, "id" | "tripId"> {
   mealValue?: string;
 }
 
-// Initialize IndexedDB
-export async function initializeDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+// Função auxiliar para checar se o IndexedDB está disponível
+function isIndexedDBAvailable(): boolean {
+  try {
+    return typeof window !== 'undefined' && 'indexedDB' in window;
+  } catch (e) {
+    console.error("Erro ao verificar suporte ao IndexedDB:", e);
+    return false;
+  }
+}
 
-    request.onerror = (event) => {
-      console.error("Error opening database:", (event.target as IDBRequest).error);
-      reject((event.target as IDBRequest).error);
+// Função para limpar e recriar o banco de dados (caso ocorra algum problema)
+export async function deleteAndRecreateDB(): Promise<boolean> {
+  console.log("Tentando deletar e recriar o banco de dados...");
+  
+  if (!isIndexedDBAvailable()) {
+    console.error("IndexedDB não está disponível neste navegador");
+    return false;
+  }
+  
+  return new Promise((resolve) => {
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+    
+    deleteRequest.onerror = () => {
+      console.error("Erro ao deletar banco de dados:", deleteRequest.error);
+      resolve(false);
     };
-
-    request.onsuccess = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      resolve(db);
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
+    
+    deleteRequest.onsuccess = () => {
+      console.log("Banco de dados deletado com sucesso, iniciando recriação");
       
-      // Create trips store
-      if (!db.objectStoreNames.contains(TRIPS_STORE)) {
-        const tripsStore = db.createObjectStore(TRIPS_STORE, { keyPath: "id", autoIncrement: true });
-        tripsStore.createIndex("cpf", "cpf", { unique: false });
-        tripsStore.createIndex("createdAt", "createdAt", { unique: false });
-      }
+      // Agora tenta criar o banco novamente
+      const createRequest = indexedDB.open(DB_NAME, DB_VERSION);
       
-      // Create expenses store
-      if (!db.objectStoreNames.contains(EXPENSES_STORE)) {
-        const expensesStore = db.createObjectStore(EXPENSES_STORE, { keyPath: "id", autoIncrement: true });
-        expensesStore.createIndex("tripId", "tripId", { unique: false });
-        expensesStore.createIndex("date", "date", { unique: false });
-      }
+      createRequest.onerror = () => {
+        console.error("Erro ao recriar banco de dados:", createRequest.error);
+        resolve(false);
+      };
       
-      // Create CPF store for user identification
-      if (!db.objectStoreNames.contains(CPF_STORE)) {
-        db.createObjectStore(CPF_STORE, { keyPath: "id" });
-      }
+      createRequest.onupgradeneeded = (event) => {
+        console.log("Recriando estrutura do banco de dados...");
+        const db = (event.target as IDBOpenDBRequest).result;
+        
+        // Cria todas as stores do zero
+        try {
+          // Create trips store
+          const tripsStore = db.createObjectStore(TRIPS_STORE, { keyPath: "id", autoIncrement: true });
+          tripsStore.createIndex("cpf", "cpf", { unique: false });
+          tripsStore.createIndex("createdAt", "createdAt", { unique: false });
+          console.log("TRIPS_STORE criado com sucesso");
+          
+          // Create expenses store
+          const expensesStore = db.createObjectStore(EXPENSES_STORE, { keyPath: "id", autoIncrement: true });
+          expensesStore.createIndex("tripId", "tripId", { unique: false });
+          expensesStore.createIndex("date", "date", { unique: false });
+          console.log("EXPENSES_STORE criado com sucesso");
+          
+          // Create CPF store
+          db.createObjectStore(CPF_STORE, { keyPath: "id" });
+          console.log("CPF_STORE criado com sucesso");
+        } catch (error) {
+          console.error("Erro durante a criação das stores:", error);
+        }
+      };
+      
+      createRequest.onsuccess = () => {
+        console.log("Banco de dados recriado com sucesso!");
+        const db = createRequest.result;
+        db.close();
+        resolve(true);
+      };
     };
   });
+}
+
+// Initialize IndexedDB
+export async function initializeDB(): Promise<IDBDatabase> {
+  console.log("Inicializando banco de dados...");
+  
+  if (!isIndexedDBAvailable()) {
+    return Promise.reject(new Error("IndexedDB não está disponível neste navegador"));
+  }
+  
+  try {
+    return await new Promise((resolve, reject) => {
+      console.log(`Abrindo banco de dados ${DB_NAME} versão ${DB_VERSION}`);
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onerror = (event) => {
+        console.error("Erro ao abrir banco de dados:", (event.target as IDBRequest).error);
+        
+        // Tenta recuperar deletando e recriando o banco
+        deleteAndRecreateDB()
+          .then(success => {
+            if (success) {
+              // Tenta novamente após recriar
+              const newRequest = indexedDB.open(DB_NAME, DB_VERSION);
+              newRequest.onerror = (e) => reject((e.target as IDBRequest).error);
+              newRequest.onsuccess = (e) => resolve((e.target as IDBOpenDBRequest).result);
+            } else {
+              reject(new Error("Não foi possível recuperar o banco de dados"));
+            }
+          })
+          .catch(recoverError => {
+            reject(recoverError);
+          });
+      };
+
+      request.onsuccess = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        console.log("Banco de dados aberto com sucesso, verificando estrutura...");
+        
+        // Verifica se todas as stores necessárias existem
+        const storesExist = 
+          db.objectStoreNames.contains(TRIPS_STORE) && 
+          db.objectStoreNames.contains(EXPENSES_STORE) && 
+          db.objectStoreNames.contains(CPF_STORE);
+        
+        if (!storesExist) {
+          console.warn("Estrutura do banco incompleta, tentando recriar...");
+          db.close();
+          
+          // Aumenta a versão para forçar o upgrade
+          const upgradeRequest = indexedDB.open(DB_NAME, DB_VERSION + 1);
+          
+          upgradeRequest.onupgradeneeded = (e) => {
+            const newDb = (e.target as IDBOpenDBRequest).result;
+            
+            // Cria as stores que faltam
+            if (!newDb.objectStoreNames.contains(TRIPS_STORE)) {
+              const tripsStore = newDb.createObjectStore(TRIPS_STORE, { keyPath: "id", autoIncrement: true });
+              tripsStore.createIndex("cpf", "cpf", { unique: false });
+              tripsStore.createIndex("createdAt", "createdAt", { unique: false });
+              console.log("TRIPS_STORE criado durante upgrade");
+            }
+            
+            if (!newDb.objectStoreNames.contains(EXPENSES_STORE)) {
+              const expensesStore = newDb.createObjectStore(EXPENSES_STORE, { keyPath: "id", autoIncrement: true });
+              expensesStore.createIndex("tripId", "tripId", { unique: false });
+              expensesStore.createIndex("date", "date", { unique: false });
+              console.log("EXPENSES_STORE criado durante upgrade");
+            }
+            
+            if (!newDb.objectStoreNames.contains(CPF_STORE)) {
+              newDb.createObjectStore(CPF_STORE, { keyPath: "id" });
+              console.log("CPF_STORE criado durante upgrade");
+            }
+          };
+          
+          upgradeRequest.onerror = (e) => {
+            console.error("Erro durante o upgrade:", (e.target as IDBRequest).error);
+            reject((e.target as IDBRequest).error);
+          };
+          
+          upgradeRequest.onsuccess = (e) => {
+            console.log("Upgrade do banco concluído com sucesso");
+            resolve((e.target as IDBOpenDBRequest).result);
+          };
+        } else {
+          console.log("Estrutura do banco OK");
+          resolve(db);
+        }
+      };
+
+      request.onupgradeneeded = (event) => {
+        console.log("Evento onupgradeneeded disparado, criando estrutura...");
+        const db = (event.target as IDBOpenDBRequest).result;
+        
+        try {
+          // Create trips store
+          if (!db.objectStoreNames.contains(TRIPS_STORE)) {
+            const tripsStore = db.createObjectStore(TRIPS_STORE, { keyPath: "id", autoIncrement: true });
+            tripsStore.createIndex("cpf", "cpf", { unique: false });
+            tripsStore.createIndex("createdAt", "createdAt", { unique: false });
+            console.log("TRIPS_STORE criado com sucesso");
+          }
+          
+          // Create expenses store
+          if (!db.objectStoreNames.contains(EXPENSES_STORE)) {
+            const expensesStore = db.createObjectStore(EXPENSES_STORE, { keyPath: "id", autoIncrement: true });
+            expensesStore.createIndex("tripId", "tripId", { unique: false });
+            expensesStore.createIndex("date", "date", { unique: false });
+            console.log("EXPENSES_STORE criado com sucesso");
+          }
+          
+          // Create CPF store for user identification
+          if (!db.objectStoreNames.contains(CPF_STORE)) {
+            db.createObjectStore(CPF_STORE, { keyPath: "id" });
+            console.log("CPF_STORE criado com sucesso");
+          }
+        } catch (error) {
+          console.error("Erro durante upgrade do banco:", error);
+        }
+      };
+    });
+  } catch (error) {
+    console.error("Erro crítico ao inicializar banco de dados:", error);
+    // Em caso de falha crítica, tenta recuperar o banco
+    const recovered = await deleteAndRecreateDB();
+    
+    if (recovered) {
+      return initializeDB(); // Tenta novamente após recuperação
+    } else {
+      throw new Error("Falha completa na inicialização do banco de dados");
+    }
+  }
 }
 
 // Get a database connection
