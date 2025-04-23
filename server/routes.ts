@@ -337,31 +337,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Acesso negado" });
       }
       
-      // Processa os dados da despesa para garantir formato correto
-      const { date, ...restData } = req.body;
+      // Extrair os dados do corpo da requisição
+      const {
+        date: dateStr,
+        destination = '',
+        justification = '',
+        breakfastValue = '0',
+        lunchValue = '0',
+        dinnerValue = '0',
+        transportValue = '0',
+        parkingValue = '0',
+        mileage = 0,
+        mileageValue = '0',
+        otherValue = '0',
+        otherDescription = '',
+        receipt = '',
+        totalValue = '0'
+      } = req.body;
       
-      // Garante que a data está no formato esperado (objeto Date)
-      const parsedDate = date ? new Date(date) : new Date();
-      
-      // Cria os metadados
-      const now = new Date();
-      
-      const expenseData = {
-        ...restData,
-        date: parsedDate,
+      console.log("Tentando criar despesa com dados:", {
         tripId,
-        createdAt: now,
-        updatedAt: now
-      };
-      
-      console.log("Criando despesa no servidor:", {
-        ...expenseData,
-        date: expenseData.date.toISOString(),
-        createdAt: expenseData.createdAt.toISOString(),
-        updatedAt: expenseData.updatedAt.toISOString()
+        dateStr,
+        destination
       });
       
-      const expense = await storage.createExpense(expenseData);
+      // Importar o módulo db diretamente para evitar problemas com o ORM
+      const { pool } = await import('./db');
+      
+      // Usar SQL direto para inserir dados, com maior controle sobre tipos
+      const insertQuery = `
+        INSERT INTO expenses (
+          trip_id, date, destination, justification, 
+          breakfast_value, lunch_value, dinner_value, 
+          transport_value, parking_value, mileage, mileage_value,
+          other_value, other_description, receipt, total_value,
+          created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW()
+        ) RETURNING *
+      `;
+      
+      // Converter a data manualmente
+      let parsedDate;
+      try {
+        parsedDate = new Date(dateStr);
+        if (isNaN(parsedDate.getTime())) {
+          parsedDate = new Date(); // Usar data atual se a conversão falhar
+        }
+      } catch (e) {
+        console.error("Erro ao converter data:", e);
+        parsedDate = new Date();
+      }
+      
+      // Valores para os placeholders na query
+      const values = [
+        tripId,
+        parsedDate,
+        destination,
+        justification,
+        breakfastValue,
+        lunchValue,
+        dinnerValue,
+        transportValue,
+        parkingValue,
+        mileage,
+        mileageValue,
+        otherValue,
+        otherDescription,
+        receipt,
+        totalValue
+      ];
+      
+      console.log("Executando SQL de inserção com data:", parsedDate);
+      
+      // Executar a query diretamente
+      const result = await pool.query(insertQuery, values);
+      const expense = result.rows[0];
+      
+      console.log("Despesa criada com sucesso:", expense);
+      
       res.status(201).json(expense);
     } catch (error) {
       console.error("Erro ao criar despesa:", error);
