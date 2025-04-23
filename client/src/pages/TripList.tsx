@@ -37,30 +37,107 @@ const TripList = () => {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
-  const loadTrips = async () => {
-    console.log("TripList: Carregando lista de viagens");
-    setIsLoading(true);
+  // Função para tentar sincronizar com o servidor diretamente
+  const syncWithServer = async (cpf: string) => {
     try {
-      const cpf = await getCPF();
-      console.log("TripList: CPF obtido para busca:", cpf);
+      console.log(`Sincronizando viagens para o CPF: ${cpf}`);
+      const response = await fetch(`/api/trips/by-cpf/${cpf}`, {
+        credentials: 'include',
+      });
       
-      const tripList = cpf ? await getTripsByCpf(cpf) : await getAllTrips();
-      console.log("TripList: Viagens carregadas:", tripList.length);
+      if (!response.ok) {
+        console.warn(`Erro ao buscar viagens: ${response.status} - ${response.statusText}`);
+        return;
+      }
       
-      setTrips(tripList);
+      const serverTrips = await response.json();
+      console.log(`Encontradas ${serverTrips.length} viagens no servidor`);
       
-      // Load summary data for each trip
+      // Converter datas
+      const formattedTrips = serverTrips.map((trip: any) => ({
+        ...trip,
+        createdAt: new Date(trip.createdAt || new Date()),
+        startDate: trip.startDate ? new Date(trip.startDate) : null,
+        endDate: trip.endDate ? new Date(trip.endDate) : null,
+      }));
+      
+      // Atualizar a UI diretamente
+      setTrips(formattedTrips);
+      
+      // Calcular os sumários
       const summaries: Record<number, { total: number, count: number }> = {};
-      for (const trip of tripList) {
+      for (const trip of formattedTrips) {
         if (trip.id) {
           console.log("TripList: Calculando resumo para viagem ID:", trip.id);
           const summary = await calculateTripSummary(trip.id);
-          const expenseCount = summary.total > 0 ? 1 : 0; // Simplificado por enquanto
+          const expenseCount = summary.total > 0 ? 1 : 0;
           summaries[trip.id] = { total: summary.total, count: expenseCount };
         }
       }
       setTripSummaries(summaries);
-      console.log("TripList: Resumo calculado para todas as viagens");
+      
+      toast({
+        title: "Sincronização concluída",
+        description: `${serverTrips.length} viagens carregadas do servidor`,
+      });
+    } catch (error) {
+      console.error("Erro na sincronização direta:", error);
+      toast({
+        title: "Erro na sincronização",
+        description: "Não foi possível sincronizar com o servidor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadTrips = async () => {
+    console.log("TripList: Carregando lista de viagens");
+    setIsLoading(true);
+    
+    try {
+      const cpf = await getCPF();
+      console.log("TripList: CPF obtido para busca:", cpf);
+      
+      if (!cpf) {
+        console.warn("TripList: CPF não encontrado, redirecionando");
+        navigate("/auth");
+        return;
+      }
+      
+      // Tentar carregar viagens do IndexedDB primeiro
+      let tripList: TripData[] = [];
+      try {
+        tripList = cpf ? await getTripsByCpf(cpf) : await getAllTrips();
+        console.log("TripList: Viagens carregadas:", tripList.length);
+        
+        setTrips(tripList);
+        
+        // Se não há viagens no IndexedDB, tentar sincronizar com o servidor
+        if (tripList.length === 0) {
+          console.log("TripList: Nenhuma viagem local, tentando sincronizar do servidor");
+          await syncWithServer(cpf);
+        }
+      } catch (localDbError) {
+        console.error("Erro ao carregar viagens locais:", localDbError);
+        
+        // Se falhar o IndexedDB, tentar sincronizar com o servidor
+        await syncWithServer(cpf);
+      }
+      
+      if (tripList.length > 0) {
+        // Load summary data for each trip
+        const summaries: Record<number, { total: number, count: number }> = {};
+        for (const trip of tripList) {
+          if (trip.id) {
+            console.log("TripList: Calculando resumo para viagem ID:", trip.id);
+            const summary = await calculateTripSummary(trip.id);
+            const expenseCount = summary.total > 0 ? 1 : 0; // Simplificado por enquanto
+            summaries[trip.id] = { total: summary.total, count: expenseCount };
+          }
+        }
+        setTripSummaries(summaries);
+        console.log("TripList: Resumo calculado para todas as viagens");
+      }
     } catch (error) {
       console.error("TripList: Erro ao carregar viagens:", error);
       toast({
@@ -127,7 +204,50 @@ const TripList = () => {
 
   const openTrip = (trip: TripData) => {
     if (trip.id) {
+      // Ao abrir uma viagem, garantimos que os dados estão sincronizados
+      const cpf = trip.cpf;
+      if (cpf) {
+        // Fazer uma nova tentativa de sincronização em segundo plano
+        syncWithServer(cpf).catch(err => 
+          console.warn("Erro na sincronização de fundo:", err)
+        );
+      }
+      
       navigate(`/trip/${trip.id}`);
+    }
+  };
+  
+  // Botão para sincronização manual
+  const handleSyncClick = async () => {
+    try {
+      setIsLoading(true);
+      toast({
+        title: "Sincronizando...",
+        description: "Buscando dados atualizados",
+      });
+      
+      // Buscar CPF
+      const cpf = await getCPF();
+      if (!cpf) {
+        toast({
+          title: "Erro na sincronização",
+          description: "CPF não encontrado",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Sincronizar diretamente com servidor
+      await syncWithServer(cpf);
+    } catch (error) {
+      console.error("Erro na sincronização manual:", error);
+      toast({
+        title: "Erro na sincronização",
+        description: "Falha ao sincronizar dados",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
