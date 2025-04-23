@@ -48,6 +48,27 @@ export default function AuthPage() {
       // Antes tentamos atualizar o IndexedDB
       try {
         // Limpa o IndexedDB para evitar conflitos de dados
+        // Primeiro tentamos limpar diretamente
+        try {
+          console.log("Tentando limpar IndexedDB localmente...");
+          const deleteRequest = indexedDB.deleteDatabase("ExpenseTrackerDB");
+          
+          await new Promise<void>((resolve) => {
+            deleteRequest.onsuccess = () => {
+              console.log("IndexedDB limpo com sucesso");
+              resolve();
+            };
+            
+            deleteRequest.onerror = () => {
+              console.error("Erro ao limpar IndexedDB:", deleteRequest.error);
+              resolve(); // Continua mesmo com erro
+            };
+          });
+        } catch (localDbError) {
+          console.error("Erro ao limpar IndexedDB localmente:", localDbError);
+        }
+        
+        // Depois tentamos via API também
         await fetch('/api/clear-indexeddb', {
           method: 'POST',
           credentials: 'include',
