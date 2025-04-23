@@ -224,7 +224,7 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
                   id="expense-destination"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Ex: Restaurante, Hotel, etc"
+                  placeholder="Ex: Aeroporto"
                   required
                 />
               </div>

@@ -19,13 +19,23 @@ interface TripModalProps {
   onSaved: () => void;
 }
 
+// Função auxiliar para formatar a data corretamente (sem UTC)
+function formatDateToInput(dateStr?: string) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {
   const [name, setName] = useState(trip?.name || "");
   const [startDate, setStartDate] = useState<string>(
-    trip?.startDate ? new Date(trip.startDate).toISOString().split("T")[0] : ""
+    trip?.startDate ? formatDateToInput(trip.startDate.toString()) : ""
   );
   const [endDate, setEndDate] = useState<string>(
-    trip?.endDate ? new Date(trip.endDate).toISOString().split("T")[0] : ""
+    trip?.endDate ? formatDateToInput(trip.endDate.toString()) : ""
   );
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -35,8 +45,8 @@ const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {
   useEffect(() => {
     if (isOpen) {
       setName(trip?.name || "");
-      setStartDate(trip?.startDate ? new Date(trip.startDate).toISOString().split("T")[0] : "");
-      setEndDate(trip?.endDate ? new Date(trip.endDate).toISOString().split("T")[0] : "");
+      setStartDate(trip?.startDate ? formatDateToInput(trip.startDate.toString()) : "");
+      setEndDate(trip?.endDate ? formatDateToInput(trip.endDate.toString()) : "");
     }
   }, [isOpen, trip]);
 
