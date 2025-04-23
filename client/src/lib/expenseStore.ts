@@ -765,6 +765,34 @@ export async function getExpense(id: number): Promise<ExpenseData | null> {
 }
 
 export async function getExpensesByTrip(tripId: number): Promise<ExpenseData[]> {
+  // Primeiro, tente buscar do servidor para atualizar o IndexedDB
+  try {
+    console.log(`Tentando carregar despesas do servidor para a viagem ${tripId}`);
+    const response = await fetch(`/api/expenses/by-trip/${tripId}`, {
+      credentials: 'include',
+    });
+    
+    if (response.ok) {
+      const serverExpenses = await response.json();
+      console.log(`Carregadas ${serverExpenses.length} despesas do servidor`);
+      
+      // Retornar diretamente a resposta do servidor
+      const expenses = serverExpenses.map((exp: any) => ({
+        ...exp,
+        date: new Date(exp.date),
+        createdAt: new Date(exp.createdAt || new Date())
+      }));
+      
+      // Agora atualize o IndexedDB em segundo plano
+      updateLocalExpensesInBackground(expenses);
+      
+      return expenses;
+    }
+  } catch (error) {
+    console.warn(`Erro ao buscar despesas do servidor: ${error}`);
+  }
+  
+  // Se não conseguir dados do servidor, use o IndexedDB
   const db = await getDB();
   const transaction = db.transaction([EXPENSES_STORE], "readonly");
   const store = transaction.objectStore(EXPENSES_STORE);
@@ -777,10 +805,34 @@ export async function getExpensesByTrip(tripId: number): Promise<ExpenseData[]> 
       // Sort by date, most recent first
       const expenses = request.result as ExpenseData[];
       expenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      console.log(`Carregadas ${expenses.length} despesas do IndexedDB`);
       resolve(expenses);
     };
     transaction.oncomplete = () => db.close();
   });
+}
+
+// Função auxiliar para atualizar o IndexedDB em segundo plano
+async function updateLocalExpensesInBackground(expenses: ExpenseData[]): Promise<void> {
+  try {
+    const db = await getDB();
+    const transaction = db.transaction([EXPENSES_STORE], "readwrite");
+    const store = transaction.objectStore(EXPENSES_STORE);
+    
+    // Limpar e adicionar novamente
+    expenses.forEach(expense => {
+      if (expense.id) {
+        store.put(expense);
+      }
+    });
+    
+    transaction.oncomplete = () => {
+      console.log(`IndexedDB atualizado com ${expenses.length} despesas`);
+      db.close();
+    };
+  } catch (error) {
+    console.error("Erro ao atualizar IndexedDB com despesas:", error);
+  }
 }
 
 // Helper function to format currency
