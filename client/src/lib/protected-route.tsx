@@ -82,10 +82,10 @@ export function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
-    console.log("Usuário não autenticado, redirecionando para /auth");
+    console.log("Usuário não autenticado, redirecionando para /auth-cpf");
     return (
       <Route path={path}>
-        <Redirect to="/auth" />
+        <Redirect to="/auth-cpf" />
       </Route>
     );
   }

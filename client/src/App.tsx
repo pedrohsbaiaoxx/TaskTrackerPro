@@ -98,10 +98,8 @@ function Router() {
     );
   }
   
-  // Se já estiver autenticado e estiver na página inicial, redirecionar para dashboard
-  if (cpf && window.location.pathname === "/") {
-    return <Redirect to="/dashboard" />;
-  }
+  // Se já estiver autenticado e estiver na página inicial, não redirecionar mais
+  // Vamos utilizar o componente de rota para decidir
   
   return (
     <Switch>
@@ -113,6 +111,7 @@ function Router() {
       <ProtectedRoute path="/trip/:id/edit-expense/:expenseId" component={ExpenseList} />
       <ProtectedRoute path="/trip/:id/view-receipt/:expenseId" component={ExpenseList} />
       <Route path="/auth" component={AuthPageCpf} />
+      <Route path="/auth-cpf" component={AuthPageCpf} />
       <Route component={NotFound} />
     </Switch>
   );
