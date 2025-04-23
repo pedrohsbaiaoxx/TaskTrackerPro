@@ -499,6 +499,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rota para excluir todas as despesas de uma viagem
+  app.delete("/api/trips/:tripId/expenses", async (req, res, next) => {
+    try {
+      const tripId = parseInt(req.params.tripId);
+      if (isNaN(tripId)) {
+        return res.status(400).json({ message: "ID de viagem inválido" });
+      }
+      
+      // Buscar todas as despesas da viagem
+      const expenses = await storage.getExpensesByTripId(tripId);
+      console.log(`Encontradas ${expenses.length} despesas para a viagem ${tripId}`);
+      
+      // Excluir cada despesa individualmente
+      for (const expense of expenses) {
+        await storage.deleteExpense(expense.id);
+      }
+      
+      console.log(`Excluídas ${expenses.length} despesas da viagem ${tripId}`);
+      res.status(200).json({ 
+        message: `${expenses.length} despesas excluídas com sucesso`,
+        count: expenses.length
+      });
+    } catch (error) {
+      console.error("Erro ao excluir despesas da viagem:", error);
+      next(error);
+    }
+  });
+  
+  // Rota para limpar o banco de dados completamente
+  app.delete("/api/reset-database", async (req, res, next) => {
+    try {
+      console.log("Iniciando limpeza do banco de dados...");
+      
+      // 1. Obter todas as viagens
+      const trips = await storage.getAllTrips();
+      console.log(`Encontradas ${trips.length} viagens para limpeza.`);
+      
+      // 2. Para cada viagem, excluir todas as despesas relacionadas
+      for (const trip of trips) {
+        try {
+          // Primeiro, buscamos todas as despesas desta viagem
+          const expenses = await storage.getExpensesByTripId(trip.id);
+          console.log(`Encontradas ${expenses.length} despesas para a viagem ${trip.id}`);
+          
+          // Excluímos cada despesa individualmente
+          for (const expense of expenses) {
+            await storage.deleteExpense(expense.id);
+          }
+          
+          console.log(`Excluídas ${expenses.length} despesas da viagem ${trip.id}`);
+        } catch (error) {
+          console.error(`Erro ao excluir despesas da viagem ${trip.id}:`, error);
+        }
+      }
+      
+      // 3. Excluir cada viagem
+      let tripDeleted = 0;
+      for (const trip of trips) {
+        try {
+          await storage.deleteTrip(trip.id);
+          tripDeleted++;
+        } catch (error) {
+          console.error(`Erro ao excluir viagem ${trip.id}:`, error);
+        }
+      }
+      
+      console.log(`Excluídas ${tripDeleted} viagens com sucesso.`);
+      res.status(200).json({
+        message: "Banco de dados limpo com sucesso",
+        trips_deleted: tripDeleted
+      });
+    } catch (error) {
+      console.error("Erro ao limpar banco de dados:", error);
+      next(error);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

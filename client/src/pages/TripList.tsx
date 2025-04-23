@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Calendar, Edit, Trash2 } from "lucide-react";
+import { Plus, Calendar, Edit, Trash2, Trash, AlertTriangle } from "lucide-react";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,8 @@ import {
   formatCurrency, 
   formatDateRange,
   getCPF,
-  calculateTripSummary
+  calculateTripSummary,
+  deleteAndRecreateDB
 } from "@/lib/expenseStore";
 import TripModal from "@/components/TripModal";
 
@@ -34,6 +35,8 @@ const TripList = () => {
   const [selectedTrip, setSelectedTrip] = useState<TripData | undefined>(undefined);
   const [tripToDelete, setTripToDelete] = useState<TripData | null>(null);
   const [tripSummaries, setTripSummaries] = useState<Record<number, { total: number, count: number }>>({});
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -250,6 +253,54 @@ const TripList = () => {
       setIsLoading(false);
     }
   };
+  
+  // Função para limpar o banco de dados no servidor
+  const resetServerDatabase = async () => {
+    try {
+      setIsResetting(true);
+      toast({
+        title: "Limpando banco de dados...",
+        description: "Excluindo todas as viagens e despesas do servidor",
+      });
+      
+      // Enviar solicitação para limpar o banco de dados
+      const response = await fetch('/api/reset-database', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro ao limpar banco de dados: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Resultado da limpeza:', result);
+      
+      // Limpar o IndexedDB local também
+      await deleteAndRecreateDB();
+      
+      // Recarregar a página para reiniciar tudo
+      toast({
+        title: "Banco de dados limpo",
+        description: `${result.trips_deleted} viagens excluídas com sucesso`,
+      });
+      
+      // Recarregar a lista de viagens
+      setTrips([]);
+      setTripSummaries({});
+    } catch (error) {
+      console.error("Erro ao limpar banco de dados:", error);
+      toast({
+        title: "Erro ao limpar banco de dados",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+      setShowResetConfirm(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
@@ -398,6 +449,47 @@ const TripList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Diálogo de confirmação para limpar o banco de dados */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reiniciar sistema</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="flex items-center gap-2 text-amber-600 mb-3">
+                <AlertTriangle size={20} />
+                <span className="font-semibold">Atenção: Operação destrutiva</span>
+              </div>
+              Esta ação <span className="font-bold">não pode ser desfeita</span>. Isso excluirá permanentemente 
+              <span className="font-bold"> todas as viagens e despesas</span> do banco de dados.
+              <br /><br />
+              Use esta opção apenas se o sistema estiver apresentando problemas graves que não podem ser resolvidos de outra maneira.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={resetServerDatabase} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isResetting}
+            >
+              {isResetting ? 'Limpando...' : 'Limpar todos os dados'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Botão flutuante para limpar banco de dados */}
+      <div className="fixed bottom-4 right-4">
+        <Button 
+          variant="outline" 
+          size="icon"
+          className="rounded-full h-10 w-10 bg-white shadow-md hover:bg-red-50 text-gray-500 hover:text-red-600"
+          onClick={() => setShowResetConfirm(true)}
+        >
+          <Trash size={18} />
+        </Button>
+      </div>
     </div>
   );
 };
