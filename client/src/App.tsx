@@ -67,34 +67,8 @@ function Header() {
 }
 
 function MobileAddButton() {
-  const [location] = useLocation();
-  const [, navigate] = useLocation();
-
-  const handleClick = () => {
-    if (location.startsWith("/trip/")) {
-      // Show new expense modal
-      const tripId = location.split("/").pop();
-      navigate(`/trip/${tripId}/new-expense`);
-    } else {
-      // Show new trip modal
-      navigate("/new-trip");
-    }
-  };
-
-  return (
-    <nav className="bg-white shadow-md md:hidden z-10">
-      <div className="container mx-auto">
-        <div className="flex justify-center">
-          <button 
-            onClick={handleClick}
-            className="bg-primary text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg fixed bottom-20 z-20"
-          >
-            <i className="ri-add-line text-2xl"></i>
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
+  // Componente removido conforme solicitado
+  return null;
 }
 
 function Router() {
