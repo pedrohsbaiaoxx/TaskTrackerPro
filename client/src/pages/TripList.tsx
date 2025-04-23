@@ -38,24 +38,31 @@ const TripList = () => {
   const { toast } = useToast();
 
   const loadTrips = async () => {
+    console.log("TripList: Carregando lista de viagens");
     setIsLoading(true);
     try {
       const cpf = await getCPF();
+      console.log("TripList: CPF obtido para busca:", cpf);
+      
       const tripList = cpf ? await getTripsByCpf(cpf) : await getAllTrips();
+      console.log("TripList: Viagens carregadas:", tripList.length);
+      
       setTrips(tripList);
       
       // Load summary data for each trip
       const summaries: Record<number, { total: number, count: number }> = {};
       for (const trip of tripList) {
         if (trip.id) {
+          console.log("TripList: Calculando resumo para viagem ID:", trip.id);
           const summary = await calculateTripSummary(trip.id);
-          const expenseCount = summary.total > 0 ? 1 : 0; // Simplified for now
+          const expenseCount = summary.total > 0 ? 1 : 0; // Simplificado por enquanto
           summaries[trip.id] = { total: summary.total, count: expenseCount };
         }
       }
       setTripSummaries(summaries);
+      console.log("TripList: Resumo calculado para todas as viagens");
     } catch (error) {
-      console.error("Error loading trips:", error);
+      console.error("TripList: Erro ao carregar viagens:", error);
       toast({
         title: "Erro ao carregar viagens",
         description: "Ocorreu um erro ao carregar suas viagens",
@@ -63,6 +70,7 @@ const TripList = () => {
       });
     } finally {
       setIsLoading(false);
+      console.log("TripList: Carregamento concluído");
     }
   };
 

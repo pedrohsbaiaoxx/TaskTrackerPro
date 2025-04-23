@@ -71,6 +71,7 @@ const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {
     try {
       // Get current CPF if available
       const cpf = await getCPF();
+      console.log("CPF obtido:", cpf);
       
       const tripData = {
         name,
@@ -78,15 +79,20 @@ const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {
         endDate: endDate ? parseDateWithoutTimezone(endDate) : null,
         cpf: cpf,
       };
+      console.log("Dados da viagem a serem salvos:", tripData);
 
-      if (isEditing && trip.id) {
+      if (isEditing && trip?.id) {
+        console.log("Atualizando viagem existente com ID:", trip.id);
         await updateTrip(trip.id, tripData);
+        console.log("Viagem atualizada com sucesso");
         toast({
           title: "Viagem atualizada",
           description: "A viagem foi atualizada com sucesso",
         });
       } else {
-        await saveTrip(tripData);
+        console.log("Criando nova viagem");
+        const newTripId = await saveTrip(tripData);
+        console.log("Nova viagem criada com ID:", newTripId);
         toast({
           title: "Viagem criada",
           description: "A nova viagem foi criada com sucesso",

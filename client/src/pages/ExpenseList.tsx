@@ -254,7 +254,7 @@ const ExpenseList = () => {
         // Se houver um valor total de refeição, dividimos igualmente entre as 3 refeições
         const hasMeal = expense.mealValue && parseFloat(expense.mealValue) > 0;
         const mealValue = hasMeal ? parseFloat(expense.mealValue) : 0;
-        const mealPortion = hasMeal ? (mealValue / 3).toFixed(2) : ""; // Divide em 3 partes iguais
+        const mealPortion = hasMeal ? (mealValue / 3).toFixed(2) : "0"; // Divide em 3 partes iguais
         
         return {
           "Data": expense.date ? format(new Date(expense.date), "dd/MM/yyyy") : "",
