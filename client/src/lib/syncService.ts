@@ -1,4 +1,4 @@
-import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB, getExpensesByTrip, deleteExpense } from "./expenseStore";
+import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB, getExpensesByTrip, deleteExpense, updateExpense } from "./expenseStore";
 import { apiRequest } from "./queryClient";
 
 // Define constantes usadas pelo banco de dados
