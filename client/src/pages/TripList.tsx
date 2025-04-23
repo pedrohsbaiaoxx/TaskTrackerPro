@@ -391,13 +391,13 @@ const TripList = () => {
                     <span className="text-xs text-gray-500">Total de despesas</span>
                     <p className="font-mono font-medium text-lg">
                       {trip.id && tripSummaries[trip.id] 
-                        ? formatCurrency(tripSummaries[trip.id].total) 
+                        ? formatCurrency(tripSummaries[trip.id]?.total || 0) 
                         : formatCurrency(0)}
                     </p>
                   </div>
                   <div className="rounded-full bg-primary/10 text-primary px-3 py-1 text-sm">
                     {trip.id && tripSummaries[trip.id] 
-                      ? tripSummaries[trip.id].count 
+                      ? (tripSummaries[trip.id]?.count || 0)
                       : 0} despesas
                   </div>
                 </div>
