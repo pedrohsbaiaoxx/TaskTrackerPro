@@ -35,9 +35,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "CPF é obrigatório" });
       }
       
+      // Log para debug
+      console.log(`Buscando viagens para o CPF ${cpf} no servidor`);
+      
       const trips = await storage.getTripsByCpf(cpf);
-      res.json(trips);
+      console.log(`Encontradas ${trips.length} viagens para o CPF ${cpf}`);
+      
+      // Formatamos as datas para garantir que sejam compatíveis
+      const formattedTrips = trips.map(trip => {
+        // Verificamos se o trip tem a propriedade createdAt antes de tentar usá-la
+        const createdAt = trip.createdAt ? new Date(trip.createdAt).toISOString() : new Date().toISOString();
+        
+        return {
+          ...trip,
+          startDate: trip.startDate ? new Date(trip.startDate).toISOString() : null,
+          endDate: trip.endDate ? new Date(trip.endDate).toISOString() : null,
+          createdAt: createdAt
+        };
+      });
+      
+      res.json(formattedTrips);
     } catch (error) {
+      console.error(`Erro ao buscar viagens por CPF: ${error}`);
       next(error);
     }
   });

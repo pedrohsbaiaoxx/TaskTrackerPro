@@ -24,6 +24,7 @@ export const trips = pgTable("trips", {
   endDate: timestamp("end_date"),
   userId: integer("user_id").references(() => users.id),
   cpf: text("cpf"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertTripSchema = createInsertSchema(trips).pick({

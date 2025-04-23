@@ -45,6 +45,20 @@ export default function AuthPage() {
       await saveCPF(cpf);
       
       // Autentica o usuário via API
+      // Antes tentamos atualizar o IndexedDB
+      try {
+        // Limpa o IndexedDB para evitar conflitos de dados
+        await fetch('/api/clear-indexeddb', {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(err => {
+          console.log("Erro ao limpar IndexedDB via API, continuando mesmo assim:", err);
+        });
+      } catch (error) {
+        console.error("Erro na preparação da autenticação:", error);
+        // Continua mesmo com erro
+      }
+      
       const response = await fetch('/api/auth/cpf', {
         method: 'POST',
         headers: {
