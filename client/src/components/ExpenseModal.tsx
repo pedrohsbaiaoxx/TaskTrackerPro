@@ -79,7 +79,7 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
     setMileageValue(value);
   }, [mileage]);
 
-  // Calculate total value
+  // Calculate total value and create derived mealValue
   useEffect(() => {
     const breakfast = parseFloat(breakfastValue) || 0;
     const lunch = parseFloat(lunchValue) || 0;
@@ -88,6 +88,9 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
     const parking = parseFloat(parkingValue) || 0;
     const mileageValueFloat = parseFloat(mileageValue) || 0;
     const other = parseFloat(otherValue) || 0;
+    
+    // Total de refeições para compatibilidade com o campo legacy
+    const mealTotal = breakfast + lunch + dinner;
     
     const total = breakfast + lunch + dinner + transport + parking + mileageValueFloat + other;
     setTotalValue(total.toFixed(2));
@@ -145,6 +148,11 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
     }
 
     try {
+      const breakfast = parseFloat(breakfastValue) || 0;
+      const lunch = parseFloat(lunchValue) || 0;
+      const dinner = parseFloat(dinnerValue) || 0;
+      const mealTotal = (breakfast + lunch + dinner).toFixed(2);
+      
       const expenseData = {
         tripId,
         date: new Date(date),
@@ -161,6 +169,8 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
         otherDescription,
         receipt: receiptBase64,
         totalValue,
+        // Para compatibilidade com código legado
+        mealValue: mealTotal
       };
 
       if (isEditing && expense.id) {

@@ -18,6 +18,8 @@ export interface ExpenseData extends Omit<Expense, "id" | "tripId"> {
   id?: number;
   tripId: number;
   createdAt: Date;
+  // Campo legado para compatibilidade
+  mealValue?: string;
 }
 
 // Initialize IndexedDB
