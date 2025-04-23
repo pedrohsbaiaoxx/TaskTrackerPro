@@ -99,8 +99,8 @@ const TripList = () => {
       console.log("TripList: CPF obtido para busca:", cpf);
       
       if (!cpf) {
-        console.warn("TripList: CPF não encontrado, redirecionando");
-        navigate("/auth");
+        console.warn("TripList: CPF não encontrado, redirecionando para tela de autenticação");
+        navigate("/auth-cpf");
         return;
       }
       

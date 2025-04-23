@@ -100,7 +100,11 @@ export default function AuthPage() {
         description: "Você foi identificado com sucesso",
       });
       
-      navigate("/dashboard");
+      // Aguarda um pequeno momento para garantir que o CPF foi salvo no banco
+      setTimeout(() => {
+        // Garante que navegamos para a raiz, que deve redirecionar para a lista de viagens
+        navigate("/");
+      }, 500);
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       toast({

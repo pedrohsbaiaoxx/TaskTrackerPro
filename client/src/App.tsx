@@ -128,7 +128,7 @@ function AppMobileButton({ showButton }: { showButton: boolean }) {
 
 function App() {
   const [location] = useLocation();
-  const isAuthPage = location === "/auth";
+  const isAuthPage = location === "/auth" || location === "/auth-cpf";
 
   return (
     <QueryClientProvider client={queryClient}>
