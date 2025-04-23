@@ -309,25 +309,35 @@ const TripList = () => {
     }
   };
 
+  // Sincronizar automaticamente quando componente carrega
+  useEffect(() => {
+    // Buscar CPF e sincronizar em segundo plano
+    const autoSync = async () => {
+      try {
+        const cpf = await getCPF();
+        if (cpf) {
+          syncWithServer(cpf).catch(err => 
+            console.warn("Erro na sincronização automática:", err)
+          );
+        }
+      } catch (error) {
+        console.warn("Erro ao sincronizar automaticamente:", error);
+      }
+    };
+    
+    // Executar imediatamente e a cada 30 segundos
+    autoSync();
+    const intervalId = setInterval(autoSync, 30000);
+    
+    // Limpar intervalo quando componente é desmontado
+    return () => clearInterval(intervalId);
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">Minhas Viagens</h2>
         <div className="flex gap-2">
-          <Button 
-            onClick={handleSyncClick} 
-            variant="outline" 
-            className="flex items-center gap-2"
-            disabled={isLoading}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isLoading ? "animate-spin" : ""}>
-              <path d="M21 2v6h-6"></path>
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-              <path d="M3 22v-6h6"></path>
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-            </svg>
-            Sincronizar
-          </Button>
           <Button onClick={handleNewTrip} className="flex items-center gap-2">
             <Plus size={16} /> Nova Viagem
           </Button>
