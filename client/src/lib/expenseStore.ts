@@ -105,8 +105,16 @@ export async function getCPF(): Promise<string | null> {
 // Trip functions
 export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promise<number> {
   try {
+    // Prepara os dados para enviar para o servidor
+    // Converte datas para strings ISO para envio seguro
+    const tripForServer = {
+      ...trip,
+      startDate: trip.startDate ? new Date(trip.startDate).toISOString() : null,
+      endDate: trip.endDate ? new Date(trip.endDate).toISOString() : null
+    };
+    
     // Primeiro, tenta salvar no servidor
-    const response = await apiRequest("POST", "/api/trips", trip);
+    const response = await apiRequest("POST", "/api/trips", tripForServer);
     
     if (response.ok) {
       const serverTrip = await response.json();
@@ -153,8 +161,16 @@ export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promis
 
 export async function updateTrip(id: number, trip: Partial<TripData>): Promise<void> {
   try {
+    // Prepara os dados para enviar para o servidor
+    // Converte datas para strings ISO para envio seguro
+    const tripForServer = {
+      ...trip,
+      startDate: trip.startDate ? new Date(trip.startDate).toISOString() : null,
+      endDate: trip.endDate ? new Date(trip.endDate).toISOString() : null
+    };
+    
     // Primeiro, tenta atualizar no servidor
-    const response = await apiRequest("PUT", `/api/trips/${id}`, trip);
+    const response = await apiRequest("PUT", `/api/trips/${id}`, tripForServer);
     
     if (response.ok) {
       // Se a atualização no servidor for bem-sucedida, atualiza localmente

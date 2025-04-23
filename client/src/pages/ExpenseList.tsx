@@ -248,34 +248,42 @@ const ExpenseList = () => {
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       
-      // Format data for Excel
-      const data = expenses.map(expense => ({
-        "Data": expense.date ? format(new Date(expense.date), "dd/MM/yyyy") : "",
-        "Destino": expense.destination,
-        "Justificativa": expense.justification,
-        "Refeição (R$)": expense.mealValue ? parseFloat(expense.mealValue) : "",
-        "Transporte (R$)": expense.transportValue ? parseFloat(expense.transportValue) : "",
-        "Estacionamento (R$)": expense.parkingValue ? parseFloat(expense.parkingValue) : "",
-        "KM rodado": expense.mileage || "",
-        "Valor KM (R$)": expense.mileageValue ? parseFloat(expense.mileageValue) : "",
-        "Outros (R$)": expense.otherValue ? parseFloat(expense.otherValue) : "",
-        "Descrição Outros": expense.otherDescription || "",
-        "Total (R$)": expense.totalValue ? parseFloat(expense.totalValue) : 0,
-      }));
+      // Format data for Excel - com as colunas na ordem solicitada
+      const data = expenses.map(expense => {
+        // Convertemos o valor total da refeição em 3 partes (café, almoço, jantar)
+        // Se houver um valor total de refeição, dividimos igualmente entre as 3 refeições
+        const hasMeal = expense.mealValue && parseFloat(expense.mealValue) > 0;
+        const mealValue = hasMeal ? parseFloat(expense.mealValue) : 0;
+        const mealPortion = hasMeal ? (mealValue / 3).toFixed(2) : ""; // Divide em 3 partes iguais
+        
+        return {
+          "Data": expense.date ? format(new Date(expense.date), "dd/MM/yyyy") : "",
+          "Destino": expense.destination || "",
+          "Justificativa": expense.justification || "",
+          "Café da manhã": mealPortion, // Primeira parte da refeição
+          "Almoço": mealPortion, // Segunda parte da refeição
+          "Jantar": mealPortion, // Terceira parte da refeição
+          "Taxi/uber": expense.transportValue ? parseFloat(expense.transportValue).toString() : "",
+          "Estacio/pedagio": expense.parkingValue ? parseFloat(expense.parkingValue).toString() : "",
+          "Km": expense.mileage ? expense.mileage.toString() : "",
+          "Outros gastos": expense.otherValue ? parseFloat(expense.otherValue).toString() : "",
+          "Descrição outros gastos": expense.otherDescription || "",
+        };
+      });
       
       // Add summary row
       data.push({
         "Data": "",
         "Destino": "TOTAL",
         "Justificativa": "",
-        "Refeição (R$)": summary.meals,
-        "Transporte (R$)": summary.transport,
-        "Estacionamento (R$)": summary.parking,
-        "KM rodado": "",
-        "Valor KM (R$)": summary.mileage,
-        "Outros (R$)": summary.other,
-        "Descrição Outros": "",
-        "Total (R$)": summary.total,
+        "Café da manhã": (summary.meals / 3).toString(), // Dividido em 3 partes
+        "Almoço": (summary.meals / 3).toString(),
+        "Jantar": (summary.meals / 3).toString(),
+        "Taxi/uber": summary.transport.toString(),
+        "Estacio/pedagio": summary.parking.toString(),
+        "Km": "",
+        "Outros gastos": summary.other.toString(),
+        "Descrição outros gastos": "",
       });
       
       // Create worksheet and add to workbook
