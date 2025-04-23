@@ -22,6 +22,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next(error);
     }
   });
+  
+  // Rota para buscar viagens pelo CPF
+  app.get("/api/trips/by-cpf/:cpf", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Não autorizado" });
+      }
+      
+      const { cpf } = req.params;
+      if (!cpf) {
+        return res.status(400).json({ message: "CPF é obrigatório" });
+      }
+      
+      const trips = await storage.getTripsByCpf(cpf);
+      res.json(trips);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.get("/api/trips/:id", async (req, res, next) => {
     try {

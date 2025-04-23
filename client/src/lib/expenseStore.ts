@@ -208,6 +208,28 @@ export async function getAllTrips(): Promise<TripData[]> {
 }
 
 export async function getTripsByCpf(cpf: string): Promise<TripData[]> {
+  try {
+    // Primeiro tenta buscar as viagens do servidor
+    const response = await fetch(`/api/trips/by-cpf/${cpf}`, {
+      credentials: 'include',
+    });
+    
+    // Se a API retornar com sucesso, usa os dados do servidor
+    if (response.ok) {
+      const trips = await response.json();
+      // Converte as datas de string para objetos Date
+      return trips.map((trip: any) => ({
+        ...trip,
+        createdAt: new Date(trip.createdAt),
+        startDate: trip.startDate ? new Date(trip.startDate) : null,
+        endDate: trip.endDate ? new Date(trip.endDate) : null,
+      }));
+    }
+  } catch (error) {
+    console.warn("Erro ao buscar viagens da API, usando dados locais:", error);
+  }
+  
+  // Se a API falhar, busca os dados do IndexedDB como fallback
   const db = await getDB();
   const transaction = db.transaction([TRIPS_STORE], "readonly");
   const store = transaction.objectStore(TRIPS_STORE);
