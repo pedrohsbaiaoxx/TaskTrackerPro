@@ -29,6 +29,12 @@ function formatDateToInput(dateStr?: string) {
   return `${year}-${month}-${day}`;
 }
 
+// Função para criar uma data sem problemas de fuso horário
+function parseDateWithoutTimezone(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day); // mês começa do zero
+}
+
 const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {
   const [name, setName] = useState(trip?.name || "");
   const [startDate, setStartDate] = useState<string>(
@@ -68,8 +74,8 @@ const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {
       
       const tripData = {
         name,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: startDate ? parseDateWithoutTimezone(startDate) : null,
+        endDate: endDate ? parseDateWithoutTimezone(endDate) : null,
         cpf: cpf,
       };
 
