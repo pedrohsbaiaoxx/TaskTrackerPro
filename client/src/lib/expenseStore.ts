@@ -106,11 +106,16 @@ export async function getCPF(): Promise<string | null> {
 export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promise<number> {
   try {
     // Prepara os dados para enviar para o servidor
-    // Converte datas para strings ISO para envio seguro
+    // Garante que as datas sejam objetos Date válidos
+    const startDate = trip.startDate instanceof Date ? trip.startDate : 
+                     (trip.startDate ? new Date(trip.startDate) : null);
+    const endDate = trip.endDate instanceof Date ? trip.endDate : 
+                   (trip.endDate ? new Date(trip.endDate) : null);
+    
     const tripForServer = {
       ...trip,
-      startDate: trip.startDate ? new Date(trip.startDate).toISOString() : null,
-      endDate: trip.endDate ? new Date(trip.endDate).toISOString() : null
+      startDate,
+      endDate
     };
     
     // Primeiro, tenta salvar no servidor
@@ -162,11 +167,16 @@ export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promis
 export async function updateTrip(id: number, trip: Partial<TripData>): Promise<void> {
   try {
     // Prepara os dados para enviar para o servidor
-    // Converte datas para strings ISO para envio seguro
+    // Garante que as datas sejam objetos Date válidos
+    const startDate = trip.startDate instanceof Date ? trip.startDate : 
+                     (trip.startDate ? new Date(trip.startDate) : null);
+    const endDate = trip.endDate instanceof Date ? trip.endDate : 
+                   (trip.endDate ? new Date(trip.endDate) : null);
+    
     const tripForServer = {
       ...trip,
-      startDate: trip.startDate ? new Date(trip.startDate).toISOString() : null,
-      endDate: trip.endDate ? new Date(trip.endDate).toISOString() : null
+      startDate,
+      endDate
     };
     
     // Primeiro, tenta atualizar no servidor
