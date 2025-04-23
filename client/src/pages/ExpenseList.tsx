@@ -772,9 +772,14 @@ const ExpenseList = () => {
           isOpen={showExpenseModal}
           onClose={() => {
             setShowExpenseModal(false);
-            navigate(`/trip/${tripId}`, { replace: true });
           }}
-          onSaved={loadTripAndExpenses}
+          onSaved={() => {
+            // Primeiro carregamos os dados atualizados
+            loadTripAndExpenses().then(() => {
+              // E só depois navegamos
+              navigate(`/trip/${tripId}`, { replace: true });
+            });
+          }}
         />
       )}
       
