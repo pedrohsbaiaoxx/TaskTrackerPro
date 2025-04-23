@@ -360,6 +360,7 @@ export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promis
     
     // Primeiro, tenta salvar no servidor
     try {
+      console.log("Enviando viagem para o servidor:", JSON.stringify(tripForServer));
       // Usa fetch diretamente para ter mais controle sobre o erro
       const response = await fetch("/api/trips", {
         method: "POST",
@@ -369,6 +370,8 @@ export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promis
         credentials: 'include',
         body: JSON.stringify(tripForServer)
       });
+      
+      console.log("Resposta do servidor:", response.status, response.statusText);
       
       if (response.ok) {
         const serverTrip = await response.json();

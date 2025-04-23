@@ -188,6 +188,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/trips", async (req, res, next) => {
     try {
+      console.log("POST /api/trips - Recebendo nova viagem:", req.body);
+      
       // Processar as datas antes de salvar
       const { startDate, endDate, cpf, ...restBody } = req.body;
       
@@ -201,8 +203,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("- EndDate original:", endDate);
       console.log("- EndDate processado:", processedEndDate);
       console.log("- CPF:", cpf);
+      console.log("- Campos restantes:", restBody);
       
       if (!cpf) {
+        console.log("ERRO: CPF não fornecido");
         return res.status(400).json({ message: "CPF é obrigatório" });
       }
       
