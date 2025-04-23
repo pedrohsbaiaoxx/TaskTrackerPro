@@ -129,8 +129,11 @@ async function getDB(): Promise<IDBDatabase> {
 // Função para verificar e reparar o banco de dados
 export async function verifyAndFixDatabase(cpf: string): Promise<boolean> {
   try {
+    console.log("Iniciando verificação do banco de dados...");
+    
     // Primeiro, verifica quantas viagens temos localmente
     const localTrips = await getTripsByCpf(cpf);
+    console.log(`Verificação: ${localTrips.length} viagens encontradas localmente`);
     
     // Agora verifica quantas viagens o servidor tem
     const response = await fetch(`/api/trips/by-cpf/${cpf}`, {
@@ -138,23 +141,32 @@ export async function verifyAndFixDatabase(cpf: string): Promise<boolean> {
     });
     
     if (!response.ok) {
+      console.error(`Erro ao buscar viagens do servidor: ${response.status}`);
       return false;
     }
     
     const serverTrips = await response.json();
+    console.log(`Verificação: ${serverTrips.length} viagens encontradas no servidor`);
     
-    // Se o servidor tem mais viagens que o local ou não temos nenhuma viagem local,
-    // isso pode indicar um problema de sincronização
-    if (serverTrips.length > 0 && (localTrips.length === 0 || serverTrips.length > localTrips.length)) {
-      console.log(`Possível problema de sincronização detectado: ${localTrips.length} viagens locais vs ${serverTrips.length} no servidor`);
+    // Compara os dados de ambas as fontes
+    const localIds = new Set(localTrips.map((t: any) => t.id));
+    const serverIds = new Set(serverTrips.map((t: any) => t.id));
+    
+    // Verifica se existem viagens no servidor que não estão no local
+    const missingLocally = Array.from(serverIds).filter((id: any) => !localIds.has(id));
+    
+    if (missingLocally.length > 0) {
+      console.log(`Detectadas ${missingLocally.length} viagens faltando localmente`);
       
       // Limpa o banco de dados local e sincroniza novamente
+      console.log("Iniciando limpeza e ressincronização...");
       await clearLocalDatabase();
       await syncTripsFromServer(cpf);
       return true;
     }
     
     // Tudo parece ok
+    console.log("Verificação concluída: banco de dados parece consistente");
     return true;
   } catch (error) {
     console.error("Erro ao verificar e reparar banco de dados:", error);

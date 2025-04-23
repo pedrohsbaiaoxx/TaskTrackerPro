@@ -74,32 +74,98 @@ async function getDB(): Promise<IDBDatabase> {
 
 // CPF functions
 export async function saveCPF(cpf: string): Promise<void> {
-  const db = await getDB();
-  const transaction = db.transaction([CPF_STORE], "readwrite");
-  const store = transaction.objectStore(CPF_STORE);
-  
-  return new Promise((resolve, reject) => {
-    const request = store.put({ id: "user", cpf });
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-    transaction.oncomplete = () => db.close();
-  });
+  try {
+    // Garante que o banco de dados está inicializado com todas as stores
+    await initializeDB();
+    
+    const db = await getDB();
+    
+    // Verifica se o store existe
+    if (!db.objectStoreNames.contains(CPF_STORE)) {
+      console.error("Store CPF não existe. Tentando reinicializar o banco");
+      db.close();
+      
+      // Força a recriação do banco de dados incrementando a versão
+      const request = indexedDB.open(DB_NAME, DB_VERSION + 1);
+      
+      request.onupgradeneeded = (event) => {
+        const upgradedDb = (event.target as IDBOpenDBRequest).result;
+        console.log("Criando CPF_STORE durante upgrade");
+        if (!upgradedDb.objectStoreNames.contains(CPF_STORE)) {
+          upgradedDb.createObjectStore(CPF_STORE, { keyPath: "id" });
+        }
+      };
+      
+      await new Promise<void>((resolve, reject) => {
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          console.log("Banco de dados reinicializado com sucesso");
+          const newDb = request.result;
+          newDb.close();
+          resolve();
+        };
+      });
+      
+      // Tenta novamente após a reinicialização
+      return saveCPF(cpf);
+    }
+    
+    const transaction = db.transaction([CPF_STORE], "readwrite");
+    const store = transaction.objectStore(CPF_STORE);
+    
+    return new Promise((resolve, reject) => {
+      const request = store.put({ id: "user", cpf });
+      request.onerror = (event) => {
+        console.error("Erro ao salvar CPF:", event);
+        db.close();
+        reject(request.error);
+      };
+      request.onsuccess = () => {
+        console.log("CPF salvo com sucesso:", cpf);
+        db.close();
+        resolve();
+      };
+    });
+  } catch (error) {
+    console.error("Erro crítico ao salvar CPF:", error);
+    throw error;
+  }
 }
 
 export async function getCPF(): Promise<string | null> {
-  const db = await getDB();
-  const transaction = db.transaction([CPF_STORE], "readonly");
-  const store = transaction.objectStore(CPF_STORE);
-  
-  return new Promise((resolve, reject) => {
-    const request = store.get("user");
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const result = request.result;
-      resolve(result ? result.cpf : null);
-    };
-    transaction.oncomplete = () => db.close();
-  });
+  try {
+    // Antes de acessar, garante que o banco de dados está inicializado
+    await initializeDB();
+    
+    const db = await getDB();
+    
+    // Verifica se o store existe antes de tentar acessá-lo
+    if (!db.objectStoreNames.contains(CPF_STORE)) {
+      console.log("Store CPF não encontrado, retornando null");
+      db.close();
+      return null;
+    }
+    
+    const transaction = db.transaction([CPF_STORE], "readonly");
+    const store = transaction.objectStore(CPF_STORE);
+    
+    return new Promise((resolve, reject) => {
+      const request = store.get("user");
+      request.onerror = () => {
+        console.error("Erro ao buscar CPF:", request.error);
+        db.close();
+        resolve(null);
+      };
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? result.cpf : null);
+        db.close();
+      };
+    });
+  } catch (error) {
+    console.error("Erro ao acessar CPF Store:", error);
+    return null;
+  }
 }
 
 // Trip functions

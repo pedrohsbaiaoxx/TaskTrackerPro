@@ -111,7 +111,7 @@ const ExpenseList = () => {
           let otherTotal = 0;
           let grandTotal = 0;
           
-          formattedExpenses.forEach(exp => {
+          formattedExpenses.forEach((exp: ExpenseData) => {
             // Somar valores de refeições
             const breakfast = exp.breakfastValue ? parseFloat(exp.breakfastValue) : 0;
             const lunch = exp.lunchValue ? parseFloat(exp.lunchValue) : 0;
@@ -341,7 +341,6 @@ const ExpenseList = () => {
                            : "";
         
         // Para km rodado, convertemos para valor em R$ (taxa de R$ 1,09 por km)
-        const mileageKm = expense.mileage ? parseFloat(expense.mileage) : 0;
         const mileageValueRS = expense.mileageValue ? parseFloat(expense.mileageValue).toString() : "";
         
         return {
