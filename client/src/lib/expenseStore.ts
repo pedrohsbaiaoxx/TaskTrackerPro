@@ -104,6 +104,12 @@ export async function getCPF(): Promise<string | null> {
 
 // Trip functions
 export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promise<number> {
+  // Cria uma cópia local para o caso do servidor falhar
+  const localTrip: TripData = {
+    ...trip,
+    createdAt: new Date()
+  };
+  
   try {
     // Prepara os dados para enviar para o servidor
     // Garante que as datas sejam objetos Date válidos
@@ -119,49 +125,77 @@ export async function saveTrip(trip: Omit<TripData, "id" | "createdAt">): Promis
     };
     
     // Primeiro, tenta salvar no servidor
-    const response = await apiRequest("POST", "/api/trips", tripForServer);
-    
-    if (response.ok) {
-      const serverTrip = await response.json();
+    try {
+      // Usa fetch diretamente para ter mais controle sobre o erro
+      const response = await fetch("/api/trips", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(tripForServer)
+      });
       
-      // Também salva localmente para disponibilidade offline
+      if (response.ok) {
+        const serverTrip = await response.json();
+        console.log("Viagem salva no servidor com sucesso:", serverTrip);
+        
+        // Também salva localmente para disponibilidade offline
+        try {
+          const db = await getDB();
+          const transaction = db.transaction([TRIPS_STORE], "readwrite");
+          const store = transaction.objectStore(TRIPS_STORE);
+          
+          const newTrip: TripData = {
+            ...trip,
+            id: serverTrip.id, // Usa o ID do servidor
+            createdAt: new Date(serverTrip.createdAt)
+          };
+          
+          return new Promise((resolve, reject) => {
+            const request = store.add(newTrip);
+            request.onerror = (event) => {
+              console.error("Erro ao salvar no IndexedDB:", event);
+              resolve(serverTrip.id); // Mesmo com erro no IndexedDB, retorna o ID do servidor
+            };
+            request.onsuccess = () => {
+              console.log("Viagem sincronizada com IndexedDB");
+              resolve(serverTrip.id);
+            };
+            transaction.oncomplete = () => db.close();
+          });
+        } catch (dbError) {
+          console.error("Erro ao abrir IndexedDB:", dbError);
+          return serverTrip.id; // Retorna o ID do servidor mesmo com erro no IndexedDB
+        }
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Erro ao salvar viagem no servidor: ${response.status} - ${errorText}`);
+      }
+    } catch (networkError) {
+      console.error("Erro de rede ao salvar no servidor:", networkError);
+      throw networkError;
+    }
+  } catch (error) {
+    console.warn("Erro ao salvar viagem no servidor, salvando apenas localmente:", error);
+    
+    // Fallback para salvar apenas localmente se o servidor falhar
+    try {
       const db = await getDB();
       const transaction = db.transaction([TRIPS_STORE], "readwrite");
       const store = transaction.objectStore(TRIPS_STORE);
       
-      const newTrip: TripData = {
-        ...trip,
-        id: serverTrip.id, // Usa o ID do servidor
-        createdAt: new Date(serverTrip.createdAt)
-      };
-      
       return new Promise((resolve, reject) => {
-        const request = store.add(newTrip);
+        const request = store.add(localTrip);
         request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(serverTrip.id);
+        request.onsuccess = () => resolve(request.result as number);
         transaction.oncomplete = () => db.close();
       });
+    } catch (dbError) {
+      console.error("Erro crítico: Falha ao salvar tanto no servidor quanto localmente:", dbError);
+      throw dbError;
     }
-  } catch (error) {
-    console.warn("Erro ao salvar viagem no servidor, salvando apenas localmente:", error);
   }
-  
-  // Fallback para salvar apenas localmente se o servidor falhar
-  const db = await getDB();
-  const transaction = db.transaction([TRIPS_STORE], "readwrite");
-  const store = transaction.objectStore(TRIPS_STORE);
-  
-  const newTrip: TripData = {
-    ...trip,
-    createdAt: new Date()
-  };
-  
-  return new Promise((resolve, reject) => {
-    const request = store.add(newTrip);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result as number);
-    transaction.oncomplete = () => db.close();
-  });
 }
 
 export async function updateTrip(id: number, trip: Partial<TripData>): Promise<void> {
