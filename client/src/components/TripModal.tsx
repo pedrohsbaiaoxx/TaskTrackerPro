@@ -32,7 +32,10 @@ function formatDateToInput(dateStr?: string) {
 // Função para criar uma data sem problemas de fuso horário
 function parseDateWithoutTimezone(dateStr: string): Date {
   const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day); // mês começa do zero
+  // Criamos a data no UTC às 12:00 para evitar problemas de fuso
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  console.log(`Convertendo data ${dateStr} para objeto Date:`, date);
+  return date;
 }
 
 const TripModal = ({ trip, isOpen, onClose, onSaved }: TripModalProps) => {

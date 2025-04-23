@@ -252,9 +252,9 @@ const ExpenseList = () => {
       const data = expenses.map(expense => {
         // Convertemos o valor total da refeição em 3 partes (café, almoço, jantar)
         // Se houver um valor total de refeição, dividimos igualmente entre as 3 refeições
-        // Tratamento dos valores de refeição
-        const hasMeal = expense.mealValue && expense.mealValue !== "" && parseFloat(expense.mealValue) > 0;
-        const mealValue = hasMeal ? parseFloat(expense.mealValue) : 0;
+        const mealValue = expense.mealValue ? 
+                         (expense.mealValue !== "" ? parseFloat(expense.mealValue || "0") : 0) 
+                         : 0;
         const mealPortion = (mealValue / 3).toFixed(2); // Divide em 3 partes iguais
         
         return {
