@@ -35,7 +35,8 @@ import {
   formatCurrency,
   formatDateRange,
   calculateTripSummary,
-  getExpense
+  getExpense,
+  getCPF
 } from "@/lib/expenseStore";
 import { deleteExpenseFromServer } from "@/lib/syncService";
 import ExpenseModal from "@/components/ExpenseModal";
@@ -79,7 +80,9 @@ const ExpenseList = () => {
         
         if (response.ok) {
           const tripsFromServer = await response.json();
-          const serverTrip = tripsFromServer.find((t: any) => t.id === tripId || t.id === parseInt(tripId as string));
+          // Garantir que tripId seja interpretado corretamente como número ou string
+          const tripIdNum = typeof tripId === 'number' ? tripId : parseInt(String(tripId), 10);
+          const serverTrip = tripsFromServer.find((t: any) => t.id === tripIdNum);
           
           if (!serverTrip) {
             // Se a viagem não existir no servidor, verificar se outra viagem existe

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ExpenseData, saveExpense, updateExpense, formatCurrency } from "@/lib/expenseStore";
-import { syncExpenseToServer } from "@/lib/syncService";
+import { syncExpenseToServer, updateExpenseOnServer } from "@/lib/syncService";
 
 // Função auxiliar para formatar a data corretamente (sem UTC)
 function formatDateToInput(dateStr?: string | Date) {
@@ -199,11 +199,39 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
       };
 
       if (isEditing && expense.id) {
+        // Primeiro atualizamos localmente
         await updateExpense(expense.id, expenseData);
-        toast({
-          title: "Despesa atualizada",
-          description: "A despesa foi atualizada com sucesso",
-        });
+        
+        // Agora enviamos a atualização para o servidor
+        try {
+          const now = new Date();
+          const syncResult = await updateExpenseOnServer(expense.id, {
+            ...expenseData,
+            id: expense.id,
+            createdAt: expense.createdAt || now,
+            updatedAt: now
+          });
+          
+          if (syncResult) {
+            toast({
+              title: "Despesa atualizada",
+              description: "A despesa foi atualizada e sincronizada com o servidor",
+            });
+          } else {
+            toast({
+              title: "Atualização parcial",
+              description: "A despesa foi atualizada localmente, mas houve erro na sincronização com o servidor",
+              variant: "destructive"
+            });
+          }
+        } catch (syncError) {
+          console.error("Erro na sincronização da atualização:", syncError);
+          toast({
+            title: "Sincronização falhou",
+            description: "A despesa foi atualizada localmente, mas a sincronização falhou",
+            variant: "destructive"
+          });
+        }
       } else {
         // Primeiro salvamos no IndexedDB local para ter um ID
         const localId = await saveExpense(expenseData);

@@ -240,6 +240,67 @@ export async function syncExpenseToServer(expense: ExpenseData): Promise<boolean
   }
 }
 
+// Função para atualizar uma despesa existente no servidor
+export async function updateExpenseOnServer(expenseId: number, expense: ExpenseData): Promise<boolean> {
+  try {
+    console.log(`Atualizando despesa no servidor. ID: ${expenseId}, TripId: ${expense.tripId}`);
+    
+    // Processamos as datas para garantir compatibilidade e remover campos problemáticos
+    const { id, createdAt, updatedAt, ...restExpense } = expense;
+    
+    // Converter a data para string ISO - precisamos ter certeza de que é uma data válida
+    const dateObj = expense.date instanceof Date ? expense.date : new Date(expense.date);
+    const dateString = dateObj.toISOString();
+    
+    // Garantir que valores numéricos sejam realmente números e não strings
+    const cleanedExpense: any = {};
+    
+    // Processar valores numéricos
+    Object.entries(restExpense).forEach(([key, value]) => {
+      if (key === 'mileage') {
+        cleanedExpense[key] = typeof value === 'string' ? parseInt(value) : value;
+      } 
+      else if (key.includes('Value') && key !== 'totalValue' && key !== 'mileageValue') {
+        // Valores monetários (exceto totalValue e mileageValue que já estão no formato correto)
+        cleanedExpense[key] = value === null || value === '' ? '0' : value;
+      } 
+      else {
+        cleanedExpense[key] = value;
+      }
+    });
+    
+    // Criamos um objeto limpo para enviar ao servidor
+    const processedExpense = {
+      ...cleanedExpense,
+      date: dateString,
+      // Todos os campos totalValue, receipt devem existir
+      totalValue: cleanedExpense.totalValue || '0',
+      receipt: cleanedExpense.receipt || ''
+    };
+    
+    console.log("Enviando atualização de despesa:", processedExpense);
+    
+    // Enviamos para o servidor usando apiRequest (PUT para atualização)
+    const response = await apiRequest(
+      "PUT", 
+      `/api/expenses/${expenseId}`, 
+      processedExpense
+    );
+    
+    if (!response.ok) {
+      console.error(`Erro ao atualizar despesa no servidor: ${response.status}`);
+      return false;
+    }
+    
+    const updatedExpense = await response.json();
+    console.log("Despesa atualizada no servidor com sucesso:", updatedExpense);
+    return true;
+  } catch (error) {
+    console.error("Erro ao atualizar despesa no servidor:", error);
+    return false;
+  }
+}
+
 // Função para excluir despesa do servidor
 export async function deleteExpenseFromServer(expenseId: number): Promise<boolean> {
   try {
