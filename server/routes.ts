@@ -7,6 +7,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar autenticação (cria as rotas /api/login, /api/register, /api/logout, /api/user)
   setupAuth(app);
   
+  // Rota para buscar o CPF do usuário atual (usado para verificação)
+  app.get("/api/user/cpf", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Usuário não autenticado" });
+    }
+    
+    // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
+    const cpf = req.user?.cpf;
+    res.status(200).json({ cpf });
+  });
+  
   // Rota para limpar o IndexedDB via API
   app.post("/api/clear-indexeddb", (req, res) => {
     // Esta rota é apenas um marcador para o cliente

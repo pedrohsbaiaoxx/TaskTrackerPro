@@ -41,44 +41,42 @@ export default function AuthPage() {
     setIsLoading(true);
     
     try {
-      // Salva no armazenamento local para autenticação rápida
-      await saveCPF(cpf);
-      
-      // Autentica o usuário via API
-      // Antes tentamos atualizar o IndexedDB
+      // Antes de tudo, vamos limpar o IndexedDB para garantir um estado consistente
       try {
-        // Limpa o IndexedDB para evitar conflitos de dados
-        // Primeiro tentamos limpar diretamente
-        try {
-          console.log("Tentando limpar IndexedDB localmente...");
-          const deleteRequest = indexedDB.deleteDatabase("ExpenseTrackerDB");
-          
-          await new Promise<void>((resolve) => {
-            deleteRequest.onsuccess = () => {
-              console.log("IndexedDB limpo com sucesso");
-              resolve();
-            };
-            
-            deleteRequest.onerror = () => {
-              console.error("Erro ao limpar IndexedDB:", deleteRequest.error);
-              resolve(); // Continua mesmo com erro
-            };
-          });
-        } catch (localDbError) {
-          console.error("Erro ao limpar IndexedDB localmente:", localDbError);
-        }
+        console.log("Tentando limpar IndexedDB localmente...");
+        const deleteRequest = indexedDB.deleteDatabase("ExpenseTrackerDB");
         
-        // Depois tentamos via API também
-        await fetch('/api/clear-indexeddb', {
+        await new Promise<void>((resolve) => {
+          deleteRequest.onsuccess = () => {
+            console.log("IndexedDB limpo com sucesso");
+            resolve();
+          };
+          
+          deleteRequest.onerror = () => {
+            console.error("Erro ao limpar IndexedDB:", deleteRequest.error);
+            resolve(); // Continua mesmo com erro
+          };
+        });
+      } catch (localDbError) {
+        console.error("Erro ao limpar IndexedDB localmente:", localDbError);
+      }
+      
+      // Depois tentamos via API também
+      try {
+        const clearResponse = await fetch('/api/clear-indexeddb', {
           method: 'POST',
           credentials: 'include',
-        }).catch(err => {
-          console.log("Erro ao limpar IndexedDB via API, continuando mesmo assim:", err);
         });
-      } catch (error) {
-        console.error("Erro na preparação da autenticação:", error);
-        // Continua mesmo com erro
+        
+        if (clearResponse.ok) {
+          console.log("IndexedDB limpo via API com sucesso");
+        }
+      } catch (apiError) {
+        console.log("Erro ao limpar IndexedDB via API:", apiError);
       }
+      
+      // Agora que o banco está limpo, salvamos o CPF
+      await saveCPF(cpf);
       
       const response = await fetch('/api/auth/cpf', {
         method: 'POST',
@@ -100,11 +98,29 @@ export default function AuthPage() {
         description: "Você foi identificado com sucesso",
       });
       
-      // Aguarda um pequeno momento para garantir que o CPF foi salvo no banco
-      setTimeout(() => {
-        // Garante que navegamos para a raiz, que deve redirecionar para a lista de viagens
-        navigate("/");
-      }, 500);
+      console.log("Autenticação bem-sucedida, preparando para navegação");
+      
+      // Garantir que o banco de dados está inicializado e o CPF está salvo
+      try {
+        // Verificar se o CPF está salvo corretamente
+        const savedCpf = await fetch('/api/user/cpf', {
+          credentials: 'include',
+        }).then(res => res.json()).then(data => data.cpf);
+        
+        console.log("CPF verificado no servidor:", savedCpf);
+        
+        // Navegação direta para o dashboard após confirmação
+        setTimeout(() => {
+          console.log("Redirecionando para dashboard");
+          navigate("/dashboard");
+        }, 1000);
+      } catch (error) {
+        console.error("Erro ao verificar CPF após login:", error);
+        // Em caso de erro, tenta navegar para a raiz mesmo assim
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
+      }
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       toast({
