@@ -1,4 +1,4 @@
-import { TripData, ExpenseData, getLocalTripsByCpf } from "./expenseStore";
+import { TripData, ExpenseData, getTripsByCpf } from "./expenseStore";
 
 // Função para sincronizar dados do servidor
 export async function syncTripsFromServer(cpf: string): Promise<boolean> {
@@ -130,7 +130,7 @@ async function getDB(): Promise<IDBDatabase> {
 export async function verifyAndFixDatabase(cpf: string): Promise<boolean> {
   try {
     // Primeiro, verifica quantas viagens temos localmente
-    const localTrips = await getLocalTripsByCpf(cpf);
+    const localTrips = await getTripsByCpf(cpf);
     
     // Agora verifica quantas viagens o servidor tem
     const response = await fetch(`/api/trips/by-cpf/${cpf}`, {

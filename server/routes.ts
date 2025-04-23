@@ -116,10 +116,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { expenses } = await import('@shared/schema');
           const { eq } = await import('drizzle-orm');
           
-          console.log(`Encontradas ${result.length} despesas via SQL para a viagem ${tripIdNum}`);
+          // Buscar despesas diretamente do banco
+          const dbResult = await db.select().from(expenses).where(eq(expenses.tripId, tripIdNum));
+          
+          console.log(`Encontradas ${dbResult.length} despesas via SQL para a viagem ${tripIdNum}`);
           
           // Formatamos as datas
-          const formattedExpenses = result.map(expense => {
+          const formattedExpenses = dbResult.map((expense: any) => {
             const createdAt = expense.createdAt 
               ? new Date(expense.createdAt).toISOString() 
               : new Date().toISOString();
