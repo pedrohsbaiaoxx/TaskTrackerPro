@@ -267,10 +267,13 @@ export async function deleteExpenseFromServer(expenseId: number): Promise<boolea
 
 export async function verifyAndFixDatabase(cpf: string): Promise<boolean> {
   try {
-    console.log("Iniciando verificação completa e correção do banco de dados");
+    console.log("Iniciando verificação do banco de dados...");
     
-    // Buscar dados do servidor primeiro para ter referência definitiva
-    console.log("Buscando dados do servidor para CPF:", cpf);
+    // Primeiro, verifica quantas viagens temos localmente
+    const localTrips = await getTripsByCpf(cpf);
+    console.log(`Verificação: ${localTrips.length} viagens encontradas localmente`);
+    
+    // Agora verifica quantas viagens o servidor tem
     const response = await fetch(`/api/trips/by-cpf/${cpf}`, {
       credentials: 'include',
     });
@@ -281,122 +284,30 @@ export async function verifyAndFixDatabase(cpf: string): Promise<boolean> {
     }
     
     const serverTrips = await response.json();
-    console.log(`Servidor tem ${serverTrips.length} viagens para CPF ${cpf}`);
+    console.log(`Verificação: ${serverTrips.length} viagens encontradas no servidor`);
     
-    // Primeiramente, limpar o banco de dados local completamente
-    await clearLocalDatabase();
-    console.log("Banco de dados local limpo completamente");
+    // Compara os dados de ambas as fontes
+    const localIds = new Set(localTrips.map((t: any) => t.id));
+    const serverIds = new Set(serverTrips.map((t: any) => t.id));
     
-    // Se não houver viagens no servidor, estamos prontos
-    if (serverTrips.length === 0) {
-      console.log("Nenhuma viagem no servidor, banco de dados está consistente");
-      return true;
-    }
+    // Verifica se existem viagens no servidor que não estão no local
+    const missingLocally = Array.from(serverIds).filter((id: any) => !localIds.has(id));
     
-    // Obter conexão com o banco de dados recém-criado
-    const db = await getDB();
-    
-    // Para cada viagem do servidor
-    for (const serverTrip of serverTrips) {
-      try {
-        console.log(`Processando viagem ${serverTrip.id} do servidor`);
-        
-        // Converter datas para objetos Date
-        const tripData = {
-          ...serverTrip,
-          createdAt: new Date(serverTrip.createdAt || new Date()),
-          startDate: serverTrip.startDate ? new Date(serverTrip.startDate) : null,
-          endDate: serverTrip.endDate ? new Date(serverTrip.endDate) : null
-        };
-        
-        // Salvar a viagem no IndexedDB
-        const tripTransaction = db.transaction(["trips"], "readwrite");
-        const tripStore = tripTransaction.objectStore("trips");
-        
-        await new Promise<void>((resolve, reject) => {
-          const addRequest = tripStore.add(tripData);
-          addRequest.onsuccess = () => resolve();
-          addRequest.onerror = (e) => {
-            console.error(`Erro ao adicionar viagem ${serverTrip.id}:`, e);
-            reject(new Error(`Falha ao adicionar viagem ${serverTrip.id}`));
-          };
-          tripTransaction.oncomplete = () => resolve();
-        });
-        
-        // Buscar as despesas para esta viagem
-        console.log(`Buscando despesas da viagem ${serverTrip.id}`);
-        const expensesResponse = await fetch(`/api/expenses/by-trip/${serverTrip.id}`, {
-          credentials: 'include'
-        });
-        
-        if (expensesResponse.ok) {
-          const serverExpenses = await expensesResponse.json();
-          console.log(`Servidor tem ${serverExpenses.length} despesas para viagem ${serverTrip.id}`);
-          
-          if (serverExpenses.length > 0) {
-            const expensesTransaction = db.transaction(["expenses"], "readwrite");
-            const expensesStore = expensesTransaction.objectStore("expenses");
-            
-            // Adicionar cada despesa no banco local
-            for (const expense of serverExpenses) {
-              try {
-                const expenseData = {
-                  ...expense,
-                  date: new Date(expense.date),
-                  createdAt: new Date(expense.createdAt || new Date())
-                };
-                
-                await new Promise<void>((resolve, reject) => {
-                  const addRequest = expensesStore.add(expenseData);
-                  addRequest.onsuccess = () => resolve();
-                  addRequest.onerror = (e) => {
-                    console.error(`Erro ao adicionar despesa ${expense.id}:`, e);
-                    reject(e);
-                  };
-                });
-              } catch (expenseError) {
-                console.warn(`Erro ao processar despesa ${expense.id}:`, expenseError);
-                // Continue com a próxima despesa mesmo se uma falhar
-              }
-            }
-            
-            await new Promise<void>(resolve => {
-              expensesTransaction.oncomplete = () => resolve();
-            });
-            
-            console.log(`Salvas ${serverExpenses.length} despesas localmente para viagem ${serverTrip.id}`);
-          }
-        } else {
-          console.warn(`Erro ao buscar despesas do servidor: ${expensesResponse.status}`);
-        }
-      } catch (tripError) {
-        console.error(`Erro ao processar viagem ${serverTrip.id}:`, tripError);
-        // Continue com a próxima viagem mesmo se uma falhar
-      }
-    }
-    
-    console.log("Verificação e correção concluídas: banco de dados agora reflete exatamente o servidor");
-    return true;
-  } catch (error) {
-    console.error("Erro crítico ao verificar e corrigir banco de dados:", error);
-    
-    // Tenta uma abordagem mais simples como fallback
-    try {
-      console.log("Tentando abordagem alternativa de recuperação");
+    if (missingLocally.length > 0) {
+      console.log(`Detectadas ${missingLocally.length} viagens faltando localmente`);
+      
+      // Limpa o banco de dados local e sincroniza novamente
+      console.log("Iniciando limpeza e ressincronização...");
       await clearLocalDatabase();
       await syncTripsFromServer(cpf);
       return true;
-    } catch (fallbackError) {
-      console.error("Falha na recuperação de emergência:", fallbackError);
-      return false;
     }
-  } finally {
-    // Certifica-se de fechar a conexão com o banco
-    try {
-      const db = await getDB();
-      db.close();
-    } catch (closeError) {
-      // ignora erros ao fechar
-    }
+    
+    // Tudo parece ok
+    console.log("Verificação concluída: banco de dados parece consistente");
+    return true;
+  } catch (error) {
+    console.error("Erro ao verificar e reparar banco de dados:", error);
+    return false;
   }
 }
