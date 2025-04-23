@@ -184,11 +184,40 @@ export async function syncExpenseToServer(expense: ExpenseData): Promise<boolean
   try {
     console.log(`Enviando despesa para o servidor. TripId: ${expense.tripId}`);
     
-    // Processamos as datas para garantir compatibilidade
+    // Processamos as datas para garantir compatibilidade e remover campos problemáticos
+    const { id, createdAt, updatedAt, ...restExpense } = expense;
+    
+    // Converter a data para string ISO - precisamos ter certeza de que é uma data válida
+    const dateObj = expense.date instanceof Date ? expense.date : new Date(expense.date);
+    const dateString = dateObj.toISOString();
+    
+    // Garantir que valores numéricos sejam realmente números e não strings
+    const cleanedExpense: any = {};
+    
+    // Processar valores numéricos
+    Object.entries(restExpense).forEach(([key, value]) => {
+      if (key === 'mileage') {
+        cleanedExpense[key] = typeof value === 'string' ? parseInt(value) : value;
+      } 
+      else if (key.includes('Value') && key !== 'totalValue' && key !== 'mileageValue') {
+        // Valores monetários (exceto totalValue e mileageValue que já estão no formato correto)
+        cleanedExpense[key] = value === null || value === '' ? '0' : value;
+      } 
+      else {
+        cleanedExpense[key] = value;
+      }
+    });
+    
+    // Criamos um objeto limpo para enviar ao servidor
     const processedExpense = {
-      ...expense,
-      date: expense.date instanceof Date ? expense.date.toISOString() : expense.date
+      ...cleanedExpense,
+      date: dateString,
+      // Todos os campos totalValue, receipt devem existir
+      totalValue: cleanedExpense.totalValue || '0',
+      receipt: cleanedExpense.receipt || ''
     };
+    
+    console.log("Enviando despesa processada:", processedExpense);
     
     // Enviamos para o servidor usando apiRequest
     const response = await apiRequest(

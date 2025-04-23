@@ -337,14 +337,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Acesso negado" });
       }
       
+      // Processa os dados da despesa para garantir formato correto
+      const { date, ...restData } = req.body;
+      
+      // Garante que a data está no formato esperado (objeto Date)
+      const parsedDate = date ? new Date(date) : new Date();
+      
+      // Cria os metadados
+      const now = new Date();
+      
       const expenseData = {
-        ...req.body,
-        tripId
+        ...restData,
+        date: parsedDate,
+        tripId,
+        createdAt: now,
+        updatedAt: now
       };
+      
+      console.log("Criando despesa no servidor:", {
+        ...expenseData,
+        date: expenseData.date.toISOString(),
+        createdAt: expenseData.createdAt.toISOString(),
+        updatedAt: expenseData.updatedAt.toISOString()
+      });
       
       const expense = await storage.createExpense(expenseData);
       res.status(201).json(expense);
     } catch (error) {
+      console.error("Erro ao criar despesa:", error);
       next(error);
     }
   });
