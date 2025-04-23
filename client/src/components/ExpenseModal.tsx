@@ -13,6 +13,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ExpenseData, saveExpense, updateExpense, formatCurrency } from "@/lib/expenseStore";
 
+// Função auxiliar para formatar a data corretamente (sem UTC)
+function formatDateToInput(dateStr?: string | Date) {
+  if (!dateStr) return format(new Date(), "yyyy-MM-dd");
+  const date = new Date(dateStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Função para criar uma data sem problemas de fuso horário
+function parseDateWithoutTimezone(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day); // mês começa do zero
+}
+
 interface ExpenseModalProps {
   tripId: number;
   expense?: ExpenseData;
@@ -25,7 +41,7 @@ const MILEAGE_RATE = 1.09;
 
 const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModalProps) => {
   const [date, setDate] = useState<string>(
-    expense?.date ? format(new Date(expense.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
+    expense?.date ? formatDateToInput(expense.date) : formatDateToInput(new Date())
   );
   const [destination, setDestination] = useState(expense?.destination || "");
   const [justification, setJustification] = useState(expense?.justification || "");
@@ -57,7 +73,11 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
   }, [isOpen, expense]);
 
   const resetForm = () => {
-    setDate(expense?.date ? format(new Date(expense.date), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
+    setDate(
+      expense?.date
+        ? formatDateToInput(expense.date)
+        : formatDateToInput(new Date())
+    );
     setDestination(expense?.destination || "");
     setJustification(expense?.justification || "");
     setBreakfastValue(expense?.breakfastValue || "");
@@ -71,6 +91,7 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
     setOtherDescription(expense?.otherDescription || "");
     setReceiptBase64(expense?.receipt || null);
   };
+
 
   // Update mileage value when mileage changes
   useEffect(() => {
@@ -155,7 +176,7 @@ const ExpenseModal = ({ tripId, expense, isOpen, onClose, onSaved }: ExpenseModa
       
       const expenseData = {
         tripId,
-        date: new Date(date),
+        date: parseDateWithoutTimezone(date),
         destination,
         justification,
         breakfastValue,
