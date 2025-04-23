@@ -461,26 +461,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const expenseId = parseInt(req.params.id);
-      const expense = await storage.getExpense(expenseId);
       
-      if (!expense) {
+      // Importar o módulo db diretamente para evitar problemas com o ORM
+      const { pool } = await import('./db');
+      
+      // Primeiro, verificamos se a despesa existe e a quem pertence
+      const checkQuery = `
+        SELECT e.id, e.trip_id, t.user_id 
+        FROM expenses e
+        JOIN trips t ON e.trip_id = t.id
+        WHERE e.id = $1
+      `;
+      
+      const checkResult = await pool.query(checkQuery, [expenseId]);
+      
+      if (checkResult.rows.length === 0) {
         return res.status(404).json({ message: "Despesa não encontrada" });
       }
       
-      const trip = await storage.getTrip(expense.tripId);
-      
-      if (!trip) {
-        return res.status(404).json({ message: "Viagem não encontrada" });
-      }
+      const expense = checkResult.rows[0];
       
       // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      if (trip.userId !== req.user.id) {
+      if (expense.user_id !== req.user.id) {
         return res.status(403).json({ message: "Acesso negado" });
       }
       
-      await storage.deleteExpense(expenseId);
+      // Executar a query de exclusão diretamente
+      const deleteQuery = `DELETE FROM expenses WHERE id = $1`;
+      await pool.query(deleteQuery, [expenseId]);
+      
+      console.log(`Despesa ${expenseId} excluída com sucesso`);
+      
       res.status(200).json({ message: "Despesa excluída com sucesso" });
     } catch (error) {
+      console.error("Erro ao excluir despesa:", error);
       next(error);
     }
   });

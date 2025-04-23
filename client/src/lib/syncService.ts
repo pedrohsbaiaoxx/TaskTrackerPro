@@ -1,4 +1,4 @@
-import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB, getExpensesByTrip } from "./expenseStore";
+import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB, getExpensesByTrip, deleteExpense } from "./expenseStore";
 import { apiRequest } from "./queryClient";
 
 // Define constantes usadas pelo banco de dados
@@ -236,6 +236,31 @@ export async function syncExpenseToServer(expense: ExpenseData): Promise<boolean
     return true;
   } catch (error) {
     console.error("Erro ao sincronizar despesa com servidor:", error);
+    return false;
+  }
+}
+
+// Função para excluir despesa do servidor
+export async function deleteExpenseFromServer(expenseId: number): Promise<boolean> {
+  try {
+    console.log(`Excluindo despesa do servidor. ID: ${expenseId}`);
+    
+    // Enviamos para o servidor usando apiRequest
+    const response = await apiRequest(
+      "DELETE", 
+      `/api/expenses/${expenseId}`, 
+      undefined
+    );
+    
+    if (!response.ok) {
+      console.error(`Erro ao excluir despesa do servidor: ${response.status}`);
+      return false;
+    }
+    
+    console.log(`Despesa ${expenseId} excluída do servidor com sucesso`);
+    return true;
+  } catch (error) {
+    console.error("Erro ao excluir despesa do servidor:", error);
     return false;
   }
 }
