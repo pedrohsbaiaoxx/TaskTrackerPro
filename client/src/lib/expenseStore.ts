@@ -321,8 +321,12 @@ export async function getAllTrips(): Promise<TripData[]> {
 }
 
 export async function getTripsByCpf(cpf: string): Promise<TripData[]> {
+  let serverTrips: TripData[] = [];
+  let gotServerData = false;
+  
   try {
     // Primeiro tenta buscar as viagens do servidor
+    console.log(`Buscando viagens para o CPF: ${cpf}`);
     const response = await fetch(`/api/trips/by-cpf/${cpf}`, {
       credentials: 'include',
     });
@@ -330,35 +334,61 @@ export async function getTripsByCpf(cpf: string): Promise<TripData[]> {
     // Se a API retornar com sucesso, usa os dados do servidor
     if (response.ok) {
       const trips = await response.json();
+      console.log(`Encontradas ${trips.length} viagens no servidor`);
+      
       // Converte as datas de string para objetos Date
-      return trips.map((trip: any) => ({
+      serverTrips = trips.map((trip: any) => ({
         ...trip,
         createdAt: new Date(trip.createdAt),
         startDate: trip.startDate ? new Date(trip.startDate) : null,
         endDate: trip.endDate ? new Date(trip.endDate) : null,
       }));
+      
+      gotServerData = true;
+    } else {
+      console.warn(`Erro ao buscar viagens: ${response.status} - ${response.statusText}`);
     }
   } catch (error) {
     console.warn("Erro ao buscar viagens da API, usando dados locais:", error);
   }
   
-  // Se a API falhar, busca os dados do IndexedDB como fallback
-  const db = await getDB();
-  const transaction = db.transaction([TRIPS_STORE], "readonly");
-  const store = transaction.objectStore(TRIPS_STORE);
-  const index = store.index("cpf");
-  
-  return new Promise((resolve, reject) => {
-    const request = index.getAll(cpf);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      // Sort by created date, most recent first
-      const trips = request.result as TripData[];
-      trips.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      resolve(trips);
-    };
-    transaction.oncomplete = () => db.close();
-  });
+  // Busca os dados locais do IndexedDB
+  try {
+    const db = await getDB();
+    const transaction = db.transaction([TRIPS_STORE], "readonly");
+    const store = transaction.objectStore(TRIPS_STORE);
+    const index = store.index("cpf");
+    
+    return new Promise((resolve, reject) => {
+      const request = index.getAll(cpf);
+      request.onerror = () => {
+        console.error("Erro ao buscar viagens do IndexedDB:", request.error);
+        // Se temos dados do servidor, retorna eles mesmo com erro no IndexedDB
+        if (gotServerData) resolve(serverTrips);
+        else reject(request.error);
+      };
+      request.onsuccess = () => {
+        console.log(`Encontradas ${request.result.length} viagens no IndexedDB`);
+        // Sort by created date, most recent first
+        const localTrips = request.result as TripData[];
+        localTrips.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        
+        // Se conseguimos dados do servidor, usa esses dados
+        if (gotServerData) {
+          // Também podemos mesclar os dados locais e do servidor se necessário
+          resolve(serverTrips);
+        } else {
+          resolve(localTrips);
+        }
+      };
+      transaction.oncomplete = () => db.close();
+    });
+  } catch (dbError) {
+    console.error("Erro ao abrir IndexedDB:", dbError);
+    // Se temos dados do servidor, retorna eles mesmo com erro no IndexedDB
+    if (gotServerData) return serverTrips;
+    return []; // Retorna array vazio se tudo falhar
+  }
 }
 
 // Expense functions
