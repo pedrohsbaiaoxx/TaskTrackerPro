@@ -273,8 +273,13 @@ const ExpenseList = () => {
     
     try {
       await deleteExpense(expenseToDelete.id);
+      
+      // Removemos a despesa excluída do array local
       setExpenses(expenses.filter(e => e.id !== expenseToDelete.id));
-      loadTripAndExpenses(); // Reload to update summary
+      
+      // Aguardamos a atualização completa dos dados e do resumo antes de mostrar a mensagem
+      await loadTripAndExpenses();
+      
       toast({
         title: "Despesa excluída",
         description: "A despesa foi excluída com sucesso",
