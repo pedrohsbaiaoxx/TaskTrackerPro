@@ -74,6 +74,7 @@ function MobileAddButton() {
 function Router() {
   const [cpf, setCpf] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [repairingDB, setRepairingDB] = useState(false);
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -81,6 +82,19 @@ function Router() {
         const storedCpf = await getCPF();
         console.log("CPF armazenado encontrado:", storedCpf);
         setCpf(storedCpf);
+        
+        // Se tiver CPF, verificar e corrigir o banco de dados
+        if (storedCpf) {
+          try {
+            setRepairingDB(true);
+            const { verifyAndFixDatabase } = await import('./lib/syncService');
+            await verifyAndFixDatabase(storedCpf);
+          } catch (syncError) {
+            console.error("Erro ao verificar banco de dados:", syncError);
+          } finally {
+            setRepairingDB(false);
+          }
+        }
       } catch (error) {
         console.error("Erro ao verificar CPF:", error);
       } finally {
@@ -91,10 +105,13 @@ function Router() {
     checkAuth();
   }, []);
   
-  if (isLoading) {
+  if (isLoading || repairingDB) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="h-8 w-8 animate-spin border-4 border-primary border-t-transparent rounded-full" />
+      <div className="flex items-center justify-center min-h-screen flex-col">
+        <div className="h-12 w-12 animate-spin border-4 border-primary border-t-transparent rounded-full mb-4" />
+        <p className="text-primary text-sm">
+          {repairingDB ? "Sincronizando dados..." : "Carregando..."}
+        </p>
       </div>
     );
   }
