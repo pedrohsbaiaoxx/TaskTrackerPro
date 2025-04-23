@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ExpenseData, saveExpense, updateExpense, formatCurrency } from "@/lib/expenseStore";
+import { syncExpenseToServer } from "@/lib/syncService";
 
 // Função auxiliar para formatar a data corretamente (sem UTC)
 function formatDateToInput(dateStr?: string | Date) {

@@ -1,4 +1,5 @@
-import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB } from "./expenseStore";
+import { TripData, ExpenseData, getTripsByCpf, deleteAndRecreateDB, getExpensesByTrip } from "./expenseStore";
+import { apiRequest } from "./queryClient";
 
 // Define constantes usadas pelo banco de dados
 const DB_NAME = "ExpenseTrackerDB";
@@ -178,7 +179,38 @@ async function getDB(): Promise<IDBDatabase> {
   });
 }
 
-// Função para verificar e reparar o banco de dados
+// Função para sincronizar despesas do IndexedDB para o servidor
+export async function syncExpenseToServer(expense: ExpenseData): Promise<boolean> {
+  try {
+    console.log(`Enviando despesa para o servidor. TripId: ${expense.tripId}`);
+    
+    // Processamos as datas para garantir compatibilidade
+    const processedExpense = {
+      ...expense,
+      date: expense.date instanceof Date ? expense.date.toISOString() : expense.date
+    };
+    
+    // Enviamos para o servidor usando apiRequest
+    const response = await apiRequest(
+      "POST", 
+      `/api/trips/${expense.tripId}/expenses`, 
+      processedExpense
+    );
+    
+    if (!response.ok) {
+      console.error(`Erro ao enviar despesa para o servidor: ${response.status}`);
+      return false;
+    }
+    
+    const savedExpense = await response.json();
+    console.log("Despesa salva no servidor com sucesso:", savedExpense);
+    return true;
+  } catch (error) {
+    console.error("Erro ao sincronizar despesa com servidor:", error);
+    return false;
+  }
+}
+
 export async function verifyAndFixDatabase(cpf: string): Promise<boolean> {
   try {
     console.log("Iniciando verificação do banco de dados...");
