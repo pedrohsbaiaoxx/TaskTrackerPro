@@ -268,6 +268,9 @@ const TripList = () => {
         description: "Excluindo todas as viagens e despesas do servidor",
       });
       
+      // Limpar localmente primeiro
+      await deleteAndRecreateDB();
+      
       // Enviar solicitação para limpar o banco de dados
       const response = await fetch('/api/reset-database', {
         method: 'DELETE',
@@ -282,10 +285,6 @@ const TripList = () => {
       const result = await response.json();
       console.log('Resultado da limpeza:', result);
       
-      // Limpar o IndexedDB local também
-      await deleteAndRecreateDB();
-      
-      // Recarregar a página para reiniciar tudo
       toast({
         title: "Banco de dados limpo",
         description: `${result.trips_deleted} viagens excluídas com sucesso`,
@@ -294,6 +293,9 @@ const TripList = () => {
       // Recarregar a lista de viagens
       setTrips([]);
       setTripSummaries({});
+      
+      // Forçar uma recarga
+      window.location.reload();
     } catch (error) {
       console.error("Erro ao limpar banco de dados:", error);
       toast({
