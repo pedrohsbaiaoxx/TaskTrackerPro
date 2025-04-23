@@ -326,11 +326,10 @@ const ExpenseList = () => {
     if (expense.mealValue && parseFloat(expense.mealValue) > 0) {
       return { label: "Refeição", bgColor: "bg-blue-100 text-blue-800" };
     }
-    if (expense.transportValue && parseFloat(expense.transportValue) > 0) {
-      return { label: "Transporte", bgColor: "bg-green-100 text-green-800" };
-    }
-    if (expense.parkingValue && parseFloat(expense.parkingValue) > 0) {
-      return { label: "Estacionamento", bgColor: "bg-amber-100 text-amber-800" };
+    if ((expense.transportValue && parseFloat(expense.transportValue) > 0) || 
+        (expense.parkingValue && parseFloat(expense.parkingValue) > 0)) {
+      // Combina transporte e estacionamento
+      return { label: "Transporte/Estacion.", bgColor: "bg-green-100 text-green-800" };
     }
     if (expense.mileage && expense.mileage > 0) {
       return { label: "KM rodado", bgColor: "bg-purple-100 text-purple-800" };
@@ -457,10 +456,9 @@ const ExpenseList = () => {
       
       doc.setFontSize(10);
       doc.text(`Refeições: ${formatCurrency(summary.meals)}`, margin + 5, 70);
-      doc.text(`Transporte: ${formatCurrency(summary.transport)}`, margin + 70, 70);
-      doc.text(`Estacionamento: ${formatCurrency(summary.parking)}`, margin + 5, 80);
-      doc.text(`KM rodado: ${formatCurrency(summary.mileage)}`, margin + 70, 80);
-      doc.text(`Outros: ${formatCurrency(summary.other)}`, margin + 140, 70);
+      doc.text(`Transporte/Estacion.: ${formatCurrency(summary.transport + summary.parking)}`, margin + 70, 70);
+      doc.text(`KM rodado: ${formatCurrency(summary.mileage)}`, margin + 5, 80);
+      doc.text(`Outros: ${formatCurrency(summary.other)}`, margin + 70, 80);
       
       doc.setFontSize(12);
       doc.text(`Total: ${formatCurrency(summary.total)}`, pageWidth - margin - 40, 80, { align: "right" });
@@ -621,18 +619,14 @@ const ExpenseList = () => {
         <Card className="bg-white rounded-xl shadow-sm mb-6">
           <CardContent className="p-4">
             <h3 className="font-medium text-gray-500 mb-3">Resumo das Despesas</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="text-center p-3 bg-blue-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Refeições</p>
                 <p className="font-mono font-medium text-lg">{formatCurrency(summary.meals)}</p>
               </div>
               <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Transporte</p>
-                <p className="font-mono font-medium text-lg">{formatCurrency(summary.transport)}</p>
-              </div>
-              <div className="text-center p-3 bg-amber-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Estacion.</p>
-                <p className="font-mono font-medium text-lg">{formatCurrency(summary.parking)}</p>
+                <p className="text-xs text-gray-500 mb-1">Transporte/Estacion.</p>
+                <p className="font-mono font-medium text-lg">{formatCurrency(summary.transport + summary.parking)}</p>
               </div>
               <div className="text-center p-3 bg-purple-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">KM rodado</p>
