@@ -250,39 +250,52 @@ const ExpenseList = () => {
       
       // Format data for Excel - com as colunas na ordem solicitada
       const data = expenses.map(expense => {
-        // Convertemos o valor total da refeição em 3 partes (café, almoço, jantar)
-        // Se houver um valor total de refeição, dividimos igualmente entre as 3 refeições
-        const mealValue = expense.mealValue ? 
-                         (expense.mealValue !== "" ? parseFloat(expense.mealValue || "0") : 0) 
-                         : 0;
-        const mealPortion = (mealValue / 3).toFixed(2); // Divide em 3 partes iguais
+        // Usa os valores individuais para cada refeição
+        const breakfastValue = expense.breakfastValue ? 
+                              (expense.breakfastValue !== "" ? parseFloat(expense.breakfastValue || "0").toString() : "") 
+                              : "";
+        const lunchValue = expense.lunchValue ? 
+                          (expense.lunchValue !== "" ? parseFloat(expense.lunchValue || "0").toString() : "") 
+                          : "";
+        const dinnerValue = expense.dinnerValue ? 
+                           (expense.dinnerValue !== "" ? parseFloat(expense.dinnerValue || "0").toString() : "") 
+                           : "";
+        
+        // Para km rodado, convertemos para valor em R$ (taxa de R$ 1,09 por km)
+        const mileageKm = expense.mileage ? parseFloat(expense.mileage) : 0;
+        const mileageValueRS = expense.mileageValue ? parseFloat(expense.mileageValue).toString() : "";
         
         return {
           "Data": expense.date ? format(new Date(expense.date), "dd/MM/yyyy") : "",
           "Destino": expense.destination || "",
           "Justificativa": expense.justification || "",
-          "Café da manhã": mealPortion, // Primeira parte da refeição
-          "Almoço": mealPortion, // Segunda parte da refeição
-          "Jantar": mealPortion, // Terceira parte da refeição
+          "Café da manhã": breakfastValue, // Valor específico do café
+          "Almoço": lunchValue, // Valor específico do almoço
+          "Jantar": dinnerValue, // Valor específico do jantar
           "Taxi/uber": expense.transportValue ? parseFloat(expense.transportValue).toString() : "",
           "Estacio/pedagio": expense.parkingValue ? parseFloat(expense.parkingValue).toString() : "",
-          "Km": expense.mileage ? expense.mileage.toString() : "",
+          "Km": mileageValueRS, // Valor em R$ do km rodado
           "Outros gastos": expense.otherValue ? parseFloat(expense.otherValue).toString() : "",
           "Descrição outros gastos": expense.otherDescription || "",
         };
       });
+      
+      // Calcular os totais reais de cada categoria
+      const totalBreakfast = expenses.reduce((sum, exp) => sum + (exp.breakfastValue ? parseFloat(exp.breakfastValue || "0") : 0), 0);
+      const totalLunch = expenses.reduce((sum, exp) => sum + (exp.lunchValue ? parseFloat(exp.lunchValue || "0") : 0), 0);
+      const totalDinner = expenses.reduce((sum, exp) => sum + (exp.dinnerValue ? parseFloat(exp.dinnerValue || "0") : 0), 0);
       
       // Add summary row
       data.push({
         "Data": "",
         "Destino": "TOTAL",
         "Justificativa": "",
-        "Café da manhã": (summary.meals / 3).toString(), // Dividido em 3 partes
-        "Almoço": (summary.meals / 3).toString(),
-        "Jantar": (summary.meals / 3).toString(),
+        "Café da manhã": totalBreakfast.toString(),
+        "Almoço": totalLunch.toString(),
+        "Jantar": totalDinner.toString(),
         "Taxi/uber": summary.transport.toString(),
         "Estacio/pedagio": summary.parking.toString(),
-        "Km": "",
+        "Km": summary.mileage.toString(), // Valor em R$ do total de km
         "Outros gastos": summary.other.toString(),
         "Descrição outros gastos": "",
       });
