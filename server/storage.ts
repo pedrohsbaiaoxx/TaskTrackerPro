@@ -208,82 +208,147 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExpense(expense: InsertExpense): Promise<Expense> {
-    // Garantir que os campos de data estejam no formato correto
-    const processedExpense: any = { ...expense };
+    // Extraímos apenas os campos do InsertExpense que sabemos que são seguros
+    // Isso evita campos não definidos que possam causar problemas
+    const {
+      tripId,
+      date: rawDate,
+      destination,
+      justification,
+      breakfastValue,
+      lunchValue,
+      dinnerValue,
+      transportValue,
+      parkingValue,
+      mileage,
+      mileageValue,
+      otherValue,
+      otherDescription,
+      receipt,
+      totalValue
+    } = expense;
     
-    // Garantir que a propriedade date seja uma instância Date válida
-    if (processedExpense.date && !(processedExpense.date instanceof Date)) {
-      try {
-        processedExpense.date = new Date(processedExpense.date);
-      } catch (e) {
-        console.error("Erro convertendo date:", e);
-        processedExpense.date = new Date();
+    // Convertemos a data explicitamente para um objeto Date
+    let parsedDate: Date;
+    try {
+      if (rawDate instanceof Date) {
+        parsedDate = rawDate;
+      } else if (typeof rawDate === 'string') {
+        parsedDate = new Date(rawDate);
+        // Verificamos se a data é válida
+        if (isNaN(parsedDate.getTime())) {
+          console.error("Data inválida recebida:", rawDate);
+          parsedDate = new Date();
+        }
+      } else {
+        console.error("Tipo de data inválido recebido:", typeof rawDate);
+        parsedDate = new Date();
       }
+    } catch (e) {
+      console.error("Erro ao converter data:", e);
+      parsedDate = new Date();
     }
     
-    // Garantir que os metadados são instâncias Date válidas
-    if (processedExpense.createdAt && !(processedExpense.createdAt instanceof Date)) {
-      try {
-        processedExpense.createdAt = new Date(processedExpense.createdAt);
-      } catch (e) {
-        console.error("Erro convertendo createdAt:", e);
-        processedExpense.createdAt = new Date();
-      }
-    }
+    // Agora criamos um objeto limpo com apenas os dados que queremos inserir
+    // Adicionamos explicitamente os timestamps
+    const now = new Date();
     
-    if (processedExpense.updatedAt && !(processedExpense.updatedAt instanceof Date)) {
-      try {
-        processedExpense.updatedAt = new Date(processedExpense.updatedAt);
-      } catch (e) {
-        console.error("Erro convertendo updatedAt:", e);
-        processedExpense.updatedAt = new Date();
-      }
-    }
+    const cleanExpense = {
+      tripId,
+      date: parsedDate,
+      destination: destination || '',
+      justification: justification || '',
+      breakfastValue: breakfastValue || '0',
+      lunchValue: lunchValue || '0',
+      dinnerValue: dinnerValue || '0',
+      transportValue: transportValue || '0',
+      parkingValue: parkingValue || '0',
+      mileage: mileage || 0,
+      mileageValue: mileageValue || '0',
+      otherValue: otherValue || '0',
+      otherDescription: otherDescription || '',
+      receipt: receipt || '',
+      totalValue: totalValue || '0',
+      createdAt: now,
+      updatedAt: now
+    };
     
-    // Verificar se precisamos adicionar metadados caso não tenham sido fornecidos
-    if (!processedExpense.createdAt) {
-      processedExpense.createdAt = new Date();
-    }
-    
-    if (!processedExpense.updatedAt) {
-      processedExpense.updatedAt = new Date();
-    }
-    
-    console.log("Inserindo despesa no banco de dados:", {
-      ...processedExpense,
-      date: processedExpense.date ? processedExpense.date.toISOString() : null,
-      createdAt: processedExpense.createdAt ? processedExpense.createdAt.toISOString() : null,
-      updatedAt: processedExpense.updatedAt ? processedExpense.updatedAt.toISOString() : null
+    console.log("Inserindo despesa no banco de dados (processada):", {
+      ...cleanExpense,
+      date: cleanExpense.date.toISOString(),
+      createdAt: cleanExpense.createdAt.toISOString(),
+      updatedAt: cleanExpense.updatedAt.toISOString()
     });
     
-    const results = await db.insert(expenses).values(processedExpense).returning();
-    return results[0];
+    try {
+      const results = await db.insert(expenses).values(cleanExpense).returning();
+      return results[0];
+    } catch (error) {
+      console.error("Erro ao inserir despesa no banco de dados:", error);
+      throw error;
+    }
   }
 
   async updateExpense(id: number, expenseData: Partial<InsertExpense>): Promise<void> {
-    // Garantir que os campos de data estejam no formato correto
-    const processedExpense: any = { ...expenseData };
+    // Criamos um objeto limpo para atualização
+    const cleanUpdate: any = {};
     
-    // Garantir que a propriedade date seja uma instância Date válida
-    if (processedExpense.date && !(processedExpense.date instanceof Date)) {
+    // Extraímos e processamos apenas os campos que foram fornecidos
+    if (expenseData.tripId !== undefined) {
+      cleanUpdate.tripId = expenseData.tripId;
+    }
+    
+    // Processar a data se foi fornecida
+    if (expenseData.date !== undefined) {
       try {
-        processedExpense.date = new Date(processedExpense.date);
+        if (expenseData.date instanceof Date) {
+          cleanUpdate.date = expenseData.date;
+        } else if (typeof expenseData.date === 'string') {
+          const parsedDate = new Date(expenseData.date);
+          if (!isNaN(parsedDate.getTime())) {
+            cleanUpdate.date = parsedDate;
+          } else {
+            console.error("Data inválida na atualização:", expenseData.date);
+          }
+        }
       } catch (e) {
-        console.error("Erro convertendo date:", e);
-        delete processedExpense.date; // Remove se não pudermos converter
+        console.error("Erro ao processar data na atualização:", e);
       }
     }
     
-    // Adicionar updatedAt
-    processedExpense.updatedAt = new Date();
+    // Processar campos de texto
+    const textFields = [
+      'destination', 'justification', 'breakfastValue', 'lunchValue', 
+      'dinnerValue', 'transportValue', 'parkingValue', 'mileageValue',
+      'otherValue', 'otherDescription', 'receipt', 'totalValue'
+    ];
     
-    console.log("Atualizando despesa no banco de dados:", {
-      ...processedExpense,
-      date: processedExpense.date ? processedExpense.date.toISOString() : undefined,
-      updatedAt: processedExpense.updatedAt.toISOString()
+    textFields.forEach(field => {
+      if (expenseData[field as keyof typeof expenseData] !== undefined) {
+        cleanUpdate[field] = expenseData[field as keyof typeof expenseData] || '';
+      }
     });
     
-    await db.update(expenses).set(processedExpense).where(eq(expenses.id, id));
+    // Processar campo numérico
+    if (expenseData.mileage !== undefined) {
+      cleanUpdate.mileage = expenseData.mileage || 0;
+    }
+    
+    // Sempre adicionamos updatedAt
+    cleanUpdate.updatedAt = new Date();
+    
+    console.log("Atualizando despesa no banco de dados (dados limpos):", {
+      ...cleanUpdate,
+      date: cleanUpdate.date ? cleanUpdate.date.toISOString() : undefined,
+      updatedAt: cleanUpdate.updatedAt.toISOString()
+    });
+    
+    try {
+      await db.update(expenses).set(cleanUpdate).where(eq(expenses.id, id));
+    } catch (error) {
+      console.error("Erro ao atualizar despesa no banco de dados:", error);
+      throw error;
+    }
   }
 
   async deleteExpense(id: number): Promise<void> {

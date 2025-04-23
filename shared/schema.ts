@@ -62,23 +62,26 @@ export const expenses = pgTable("expenses", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertExpenseSchema = createInsertSchema(expenses).pick({
-  tripId: true,
-  date: true,
-  destination: true,
-  justification: true,
-  breakfastValue: true,
-  lunchValue: true,
-  dinnerValue: true,
-  transportValue: true,
-  parkingValue: true,
-  mileage: true,
-  mileageValue: true,
-  otherValue: true,
-  otherDescription: true,
-  receipt: true,
-  totalValue: true,
-});
+// Removemos os campos createdAt e updatedAt do schema de inserção
+// Esses campos serão adicionados automaticamente pelo servidor
+export const insertExpenseSchema = createInsertSchema(expenses)
+  .pick({
+    tripId: true,
+    date: true,
+    destination: true,
+    justification: true,
+    breakfastValue: true,
+    lunchValue: true,
+    dinnerValue: true,
+    transportValue: true,
+    parkingValue: true,
+    mileage: true,
+    mileageValue: true,
+    otherValue: true,
+    otherDescription: true,
+    receipt: true,
+    totalValue: true,
+  });
 
 // Define types
 export type InsertUser = z.infer<typeof insertUserSchema>;
