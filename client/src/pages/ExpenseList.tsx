@@ -382,8 +382,15 @@ const ExpenseList = () => {
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       
+      // Primeiro ordenamos as despesas por data (da mais antiga para a mais recente)
+      const sortedExpenses = [...expenses].sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB; // Ordem crescente (mais antiga primeiro)
+      });
+      
       // Format data for Excel - com as colunas na ordem solicitada
-      const data = expenses.map(expense => {
+      const data = sortedExpenses.map(expense => {
         // Usa os valores individuais para cada refeição
         const breakfastValue = expense.breakfastValue ? 
                               (expense.breakfastValue !== "" ? parseFloat(expense.breakfastValue || "0").toString() : "") 
@@ -465,6 +472,13 @@ const ExpenseList = () => {
       const margin = 20;
       const contentWidth = pageWidth - (margin * 2);
       
+      // Ordenamos as despesas por data (da mais antiga para a mais recente)
+      const sortedExpenses = [...expenses].sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return dateA - dateB; // Ordem crescente (mais antiga primeiro)
+      });
+      
       // Add header
       doc.setFontSize(18);
       doc.text(trip.name, margin, 20);
@@ -505,9 +519,9 @@ const ExpenseList = () => {
       doc.text("Lista de Despesas", margin, y);
       y += 10;
       
-      // Loop through expenses
-      for (let i = 0; i < expenses.length; i++) {
-        const expense = expenses[i];
+      // Loop through the sorted expenses
+      for (let i = 0; i < sortedExpenses.length; i++) {
+        const expense = sortedExpenses[i];
         
         // Check if we need a new page
         if (y > doc.internal.pageSize.getHeight() - 40) {
@@ -546,9 +560,9 @@ const ExpenseList = () => {
       doc.text("Comprovantes", margin, y);
       y += 15;
       
-      // Loop through expenses to add receipt images
-      for (let i = 0; i < expenses.length; i++) {
-        const expense = expenses[i];
+      // Loop through sorted expenses to add receipt images
+      for (let i = 0; i < sortedExpenses.length; i++) {
+        const expense = sortedExpenses[i];
         
         // Check if we need a new page
         if (y > doc.internal.pageSize.getHeight() - 100) {
