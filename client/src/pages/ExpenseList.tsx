@@ -355,7 +355,10 @@ const ExpenseList = () => {
   };
   
   const getExpenseTypeLabel = (expense: ExpenseData): { label: string, bgColor: string } => {
-    if (expense.mealValue && parseFloat(expense.mealValue) > 0) {
+    // Verificar refeições utilizando os valores individuais
+    if ((expense.breakfastValue && parseFloat(expense.breakfastValue) > 0) || 
+        (expense.lunchValue && parseFloat(expense.lunchValue) > 0) || 
+        (expense.dinnerValue && parseFloat(expense.dinnerValue) > 0)) {
       return { label: "Refeição", bgColor: "bg-blue-100 text-blue-800" };
     }
     if ((expense.transportValue && parseFloat(expense.transportValue) > 0) || 
@@ -737,10 +740,25 @@ const ExpenseList = () => {
                       <p className="text-gray-600 text-sm mt-1 mb-3">{expense.justification}</p>
                       
                       <div className="grid grid-cols-2 gap-3 mb-3">
-                        {expense.mealValue && parseFloat(expense.mealValue) > 0 && (
+                        {/* Substitui a lógica de exibição de refeição para mostrar valores individuais */}
+                        {expense.breakfastValue && parseFloat(expense.breakfastValue) > 0 && (
                           <div>
-                            <p className="text-xs text-gray-500">Refeição</p>
-                            <p className="font-mono font-medium">{formatCurrency(expense.mealValue)}</p>
+                            <p className="text-xs text-gray-500">Café da manhã</p>
+                            <p className="font-mono font-medium">{formatCurrency(expense.breakfastValue)}</p>
+                          </div>
+                        )}
+
+                        {expense.lunchValue && parseFloat(expense.lunchValue) > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500">Almoço</p>
+                            <p className="font-mono font-medium">{formatCurrency(expense.lunchValue)}</p>
+                          </div>
+                        )}
+
+                        {expense.dinnerValue && parseFloat(expense.dinnerValue) > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500">Jantar</p>
+                            <p className="font-mono font-medium">{formatCurrency(expense.dinnerValue)}</p>
                           </div>
                         )}
                         
