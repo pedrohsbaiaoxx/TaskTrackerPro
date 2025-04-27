@@ -391,19 +391,22 @@ const ExpenseList = () => {
       
       // Format data for Excel - com as colunas na ordem solicitada
       const data = sortedExpenses.map(expense => {
-        // Usa os valores individuais para cada refeição
-        const breakfastValue = expense.breakfastValue ? 
-                              (expense.breakfastValue !== "" ? parseFloat(expense.breakfastValue || "0").toString() : "") 
-                              : "";
-        const lunchValue = expense.lunchValue ? 
-                          (expense.lunchValue !== "" ? parseFloat(expense.lunchValue || "0").toString() : "") 
-                          : "";
-        const dinnerValue = expense.dinnerValue ? 
-                           (expense.dinnerValue !== "" ? parseFloat(expense.dinnerValue || "0").toString() : "") 
-                           : "";
+        // Função auxiliar para formatar números com vírgula como separador decimal
+        const formatNumberWithComma = (value: string | null | undefined): string => {
+          if (!value) return "";
+          const num = parseFloat(value);
+          if (isNaN(num)) return "";
+          // Substitui ponto por vírgula para o Excel interpretar corretamente no formato brasileiro
+          return num.toString().replace('.', ',');
+        };
+        
+        // Usa os valores individuais para cada refeição com vírgula como separador decimal
+        const breakfastValue = expense.breakfastValue ? formatNumberWithComma(expense.breakfastValue) : "";
+        const lunchValue = expense.lunchValue ? formatNumberWithComma(expense.lunchValue) : "";
+        const dinnerValue = expense.dinnerValue ? formatNumberWithComma(expense.dinnerValue) : "";
         
         // Para km rodado, convertemos para valor em R$ (taxa de R$ 1,09 por km)
-        const mileageValueRS = expense.mileageValue ? parseFloat(expense.mileageValue).toString() : "";
+        const mileageValueRS = expense.mileageValue ? formatNumberWithComma(expense.mileageValue) : "";
         
         return {
           "Data": expense.date ? format(new Date(expense.date), "dd/MM/yyyy") : "",
@@ -412,10 +415,10 @@ const ExpenseList = () => {
           "Café da manhã": breakfastValue, // Valor específico do café
           "Almoço": lunchValue, // Valor específico do almoço
           "Jantar": dinnerValue, // Valor específico do jantar
-          "Taxi/uber": expense.transportValue ? parseFloat(expense.transportValue).toString() : "",
-          "Estacio/pedagio": expense.parkingValue ? parseFloat(expense.parkingValue).toString() : "",
+          "Taxi/uber": expense.transportValue ? formatNumberWithComma(expense.transportValue) : "",
+          "Estacio/pedagio": expense.parkingValue ? formatNumberWithComma(expense.parkingValue) : "",
           "Km": mileageValueRS, // Valor em R$ do km rodado
-          "Outros gastos": expense.otherValue ? parseFloat(expense.otherValue).toString() : "",
+          "Outros gastos": expense.otherValue ? formatNumberWithComma(expense.otherValue) : "",
           "Descrição outros gastos": expense.otherDescription || "",
         };
       });
@@ -430,13 +433,13 @@ const ExpenseList = () => {
         "Data": "",
         "Destino": "TOTAL",
         "Justificativa": "",
-        "Café da manhã": totalBreakfast.toString(),
-        "Almoço": totalLunch.toString(),
-        "Jantar": totalDinner.toString(),
-        "Taxi/uber": summary.transport.toString(),
-        "Estacio/pedagio": summary.parking.toString(),
-        "Km": summary.mileage.toString(), // Valor em R$ do total de km
-        "Outros gastos": summary.other.toString(),
+        "Café da manhã": totalBreakfast.toString().replace('.', ','),
+        "Almoço": totalLunch.toString().replace('.', ','),
+        "Jantar": totalDinner.toString().replace('.', ','),
+        "Taxi/uber": summary.transport.toString().replace('.', ','),
+        "Estacio/pedagio": summary.parking.toString().replace('.', ','),
+        "Km": summary.mileage.toString().replace('.', ','), // Valor em R$ do total de km
+        "Outros gastos": summary.other.toString().replace('.', ','),
         "Descrição outros gastos": "",
       });
       
