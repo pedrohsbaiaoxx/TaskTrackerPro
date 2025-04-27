@@ -382,11 +382,11 @@ const ExpenseList = () => {
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       
-      // Primeiro ordenamos as despesas por data (da mais antiga para a mais recente)
+      // Ordenamos as despesas por data (da mais recente para a mais antiga)
       const sortedExpenses = [...expenses].sort((a, b) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
-        return dateA - dateB; // Ordem crescente (mais antiga primeiro)
+        return dateB - dateA; // Ordem decrescente (mais recente primeiro)
       });
       
       // Format data for Excel - com as colunas na ordem solicitada
@@ -472,11 +472,11 @@ const ExpenseList = () => {
       const margin = 20;
       const contentWidth = pageWidth - (margin * 2);
       
-      // Ordenamos as despesas por data (da mais antiga para a mais recente)
+      // Ordenamos as despesas por data (da mais recente para a mais antiga)
       const sortedExpenses = [...expenses].sort((a, b) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
-        return dateA - dateB; // Ordem crescente (mais antiga primeiro)
+        return dateB - dateA; // Ordem decrescente (mais recente primeiro)
       });
       
       // Add header
