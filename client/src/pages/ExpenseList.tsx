@@ -714,9 +714,15 @@ const ExpenseList = () => {
         </div>
       ) : expenses.length > 0 ? (
         <div className="space-y-4">
-          {expenses.map(expense => {
-            const type = getExpenseTypeLabel(expense);
-            return (
+          {[...expenses]
+            .sort((a, b) => {
+              const dateA = new Date(a.date).getTime();
+              const dateB = new Date(b.date).getTime();
+              return dateB - dateA; // Ordenação decrescente (mais recente primeiro)
+            })
+            .map(expense => {
+              const type = getExpenseTypeLabel(expense);
+              return (
               <Card key={expense.id} className="bg-white rounded-xl shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex flex-col md:flex-row gap-4">

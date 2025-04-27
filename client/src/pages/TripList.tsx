@@ -362,7 +362,13 @@ const TripList = () => {
         </div>
       ) : trips.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {trips.map((trip) => (
+          {[...trips]
+            .sort((a, b) => {
+              const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+              const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+              return dateB - dateA; // Ordenação decrescente (mais recente primeiro)
+            })
+            .map((trip) => (
             <Card 
               key={trip.id} 
               className="bg-white rounded-xl shadow-sm hover:shadow-md transition cursor-pointer"
