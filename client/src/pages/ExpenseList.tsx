@@ -465,6 +465,66 @@ const ExpenseList = () => {
     }
   };
   
+  /**
+   * Comprime uma imagem base64 para reduzir seu tamanho
+   * @param base64Image Imagem em formato base64
+   * @param quality Qualidade da compressão (0-1)
+   * @returns Imagem comprimida em formato base64
+   */
+  const compressImage = (base64Image: string, quality: number = 0.5): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        try {
+          // Cria um canvas para redesenhar a imagem
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          if (!ctx) {
+            reject(new Error('Não foi possível obter o contexto do canvas'));
+            return;
+          }
+          
+          // Define o tamanho máximo para a imagem
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 1000;
+          let width = img.width;
+          let height = img.height;
+          
+          // Redimensiona mantendo a proporção
+          if (width > height && width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          } else if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+          
+          // Define as dimensões do canvas
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Desenha a imagem redimensionada
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Converte para JPEG com qualidade reduzida
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      img.onerror = () => {
+        reject(new Error('Falha ao carregar a imagem'));
+      };
+      
+      // Define a fonte da imagem (deve ser a última operação)
+      img.src = base64Image;
+    });
+  };
+
   const exportPdf = async () => {
     if (!trip || expenses.length === 0) return;
     
@@ -582,7 +642,9 @@ const ExpenseList = () => {
         if (expense.receipt) {
           try {
             const imgHeight = 80;
-            doc.addImage(expense.receipt, "JPEG", margin, y, contentWidth / 2, imgHeight);
+            // Comprimir a imagem antes de adicionar ao PDF
+            const compressedImage = await compressImage(expense.receipt, 0.3); // Usando 30% da qualidade original
+            doc.addImage(compressedImage, "JPEG", margin, y, contentWidth / 2, imgHeight);
             y += imgHeight + 20;
           } catch (error) {
             console.error("Error adding image to PDF:", error);
