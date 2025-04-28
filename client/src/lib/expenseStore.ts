@@ -514,20 +514,34 @@ export async function updateTrip(id: number, trip: Partial<TripData>): Promise<v
 
 export async function deleteTrip(id: number): Promise<void> {
   try {
-    // Primeiro, tenta deletar no servidor
+    console.log(`Tentando excluir viagem ID ${id}`);
+    
+    // Primeiro tenta excluir no servidor para garantir persistência
     const response = await apiRequest("DELETE", `/api/trips/${id}`);
     
     if (response.ok) {
-      // Se a deleção no servidor for bem-sucedida, deleta localmente
+      console.log(`Viagem ${id} excluída com sucesso no servidor`);
+      // Depois de excluir no servidor, exclui localmente
       await deleteLocalTrip(id);
       return;
+    } else {
+      console.error(`Falha ao excluir viagem ${id} no servidor: ${response.status} - ${response.statusText}`);
+      const errorText = await response.text();
+      console.error("Detalhes do erro:", errorText);
+      throw new Error(`Falha ao excluir viagem no servidor: ${errorText}`);
     }
   } catch (error) {
-    console.warn("Erro ao deletar viagem no servidor, deletando apenas localmente:", error);
+    console.error("Erro ao excluir viagem:", error);
+    
+    // Tenta excluir localmente mesmo em caso de erro no servidor
+    try {
+      await deleteLocalTrip(id);
+      console.log(`Viagem ${id} excluída apenas localmente devido a erro no servidor`);
+    } catch (localError) {
+      console.error("Erro ao excluir viagem localmente:", localError);
+      throw new Error("Falha ao excluir viagem. Tente novamente.");
+    }
   }
-  
-  // Fallback para deletar apenas localmente se o servidor falhar
-  await deleteLocalTrip(id);
 }
 
 // Função auxiliar para deletar viagem localmente

@@ -188,25 +188,46 @@ const TripList = () => {
     setTripToDelete(trip);
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const confirmDeleteTrip = async () => {
     if (!tripToDelete?.id) return;
     
+    setIsDeleting(true);
     try {
+      console.log(`Iniciando exclusão da viagem ID ${tripToDelete.id}`);
+      
       await deleteTrip(tripToDelete.id);
+      
+      console.log(`Viagem ID ${tripToDelete.id} excluída, atualizando estado local`);
+      
+      // Atualizar estado local
       setTrips(trips.filter(t => t.id !== tripToDelete.id));
+      
+      // Forçar uma nova sincronização para garantir consistência
+      if (tripToDelete.cpf) {
+        try {
+          console.log(`Forçando sincronização após exclusão da viagem ${tripToDelete.id}`);
+          await syncWithServer(tripToDelete.cpf);
+        } catch (syncError) {
+          console.warn("Erro ao sincronizar após exclusão:", syncError);
+        }
+      }
+      
       toast({
         title: "Viagem excluída",
         description: "A viagem foi excluída com sucesso",
       });
-    } catch (error) {
-      console.error("Error deleting trip:", error);
+    } catch (error: any) {
+      console.error("Erro ao excluir viagem:", error);
       toast({
         title: "Erro ao excluir",
-        description: "Ocorreu um erro ao excluir a viagem",
+        description: error.message || "Ocorreu um erro ao excluir a viagem",
         variant: "destructive",
       });
     } finally {
       setTripToDelete(null);
+      setIsDeleting(false);
     }
   };
 
@@ -465,9 +486,20 @@ const TripList = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteTrip} className="bg-red-600 hover:bg-red-700">
-              Excluir
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteTrip} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
