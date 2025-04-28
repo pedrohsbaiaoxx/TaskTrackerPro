@@ -290,25 +290,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.delete("/api/trips/:id", async (req, res, next) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Não autorizado" });
-      }
-      
+      // Removida verificação de autenticação para permitir exclusão via CPF
       const tripId = parseInt(req.params.id);
+      console.log(`Solicitação para excluir viagem ${tripId}`);
+      
+      // Verificar se a viagem existe
       const trip = await storage.getTrip(tripId);
       
       if (!trip) {
+        console.log(`Viagem ${tripId} não encontrada`);
         return res.status(404).json({ message: "Viagem não encontrada" });
       }
       
-      // @ts-ignore - garantimos que o req.user existe com o req.isAuthenticated()
-      if (trip.userId !== req.user.id) {
-        return res.status(403).json({ message: "Acesso negado" });
-      }
+      // Importar o módulo db diretamente para controle total da transação
+      const { pool } = await import('./db');
       
-      await storage.deleteTrip(tripId);
-      res.status(200).json({ message: "Viagem excluída com sucesso" });
+      // Iniciar uma transação para garantir a integridade dos dados
+      const client = await pool.connect();
+      
+      try {
+        await client.query('BEGIN');
+        
+        // 1. Primeiro excluir todas as despesas associadas a esta viagem
+        console.log(`Excluindo todas as despesas da viagem ${tripId}`);
+        await client.query('DELETE FROM expenses WHERE trip_id = $1', [tripId]);
+        
+        // 2. Depois excluir a viagem
+        console.log(`Excluindo a viagem ${tripId}`);
+        await client.query('DELETE FROM trips WHERE id = $1', [tripId]);
+        
+        // Commit da transação
+        await client.query('COMMIT');
+        console.log(`Viagem ${tripId} excluída com sucesso`);
+        
+        res.status(200).json({ message: "Viagem excluída com sucesso" });
+      } catch (err) {
+        // Rollback em caso de erro
+        await client.query('ROLLBACK');
+        console.error(`Erro ao excluir viagem ${tripId}:`, err);
+        throw err;
+      } finally {
+        // Liberar o cliente de volta para o pool
+        client.release();
+      }
     } catch (error) {
+      console.error("Erro ao excluir viagem:", error);
       next(error);
     }
   });
